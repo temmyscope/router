@@ -1,17 +1,34 @@
 <?php
-Namespace Seven\Router;
+namespace Seven\Router;
 
 use \SplFixedArray;
 use \Exception;
 
+/**
+ * @author Elisha Temiloluwa a.k.a TemmyScope (temmyscope@protonmail.com)
+ * @copyright MIT
+ *
+*/
+
 class Router{
 
+	/**
+	* @var bool $authorised: Allows or restricts users' access to defined controllers
+	* @var string $namespace
+	* @var Array $controller
+	*/
 	private $authorised = true;
+	private $namespace = "";
+	private $controller;
+
 
 	/**
-	* @param <String> default: the default controller [constraint: The controller must contain an index method]
-	* note: your default controller can not be Authenticatable i.e. can not be access restricted
+	* constraint: The default controller must contain an index method (for fallback). 
+	* and can not be restricted (i.e. can not require login)
+	* @param <string> namespace
+	* @param <String> default: the default controller 
 	*/
+
 	public function __construct(string $namespace, string $default)
 	{
 		$this->namespace = $namespace.'\\';
@@ -29,11 +46,19 @@ class Router{
 		$this->controller[2] = $url[2] ?? [];
 	}
 
+
 	/**
-	* @param <Array> sessions: all the sessions must be set in order for a user to have access to the passed controllers
+	* @param <Array> sessions:name of sessions required to access the chained controller routes
+	* <pre>
+	* $sessions = [
+	* (string) Session Name.
+	* (string) Session Name.
+	* ]
+	* </pre>
+	* @return <Router> returns object of this class for method chaining.
 	*/
 
-	public function allow(array $sessions)
+	public function allow(array $sessions): Router
 	{
 		foreach ($sessions as $key) {
 			if (!isset($_SESSION[$key])) {
@@ -45,11 +70,22 @@ class Router{
 	}
 
 	/**
-	* @param <Array> controllers: all the controllers with accessible sub array of endpoints/actions
+	* @param Array $controllers: all the controllers with accessible sub array of endpoints/actions
+	* 
+	* <pre>
+	* $controller = [
+	*	'AccountController' => ['balance', 'index']
+ 	*	'ProfileController' => [ 'edit', 'index']
+	* ]
+	* </pre>
+	* @return void
 	*/
-	public function routes(array $controllers)
+	public function routes(array $controllers): void
 	{
-		if ( array_key_exists($this->controller[0] , $controllers ) && $this->authorised === true) {
+		if ( array_key_exists($this->controller[0] , $controllers ) && 
+			in_array($this->controller[1], $controllers[ $this->controller[1] ])  && 
+			$this->authorised === true
+		) {
 			try {
 				$controller = $this->namespace.$this->controller[0];
 				$builder = new \DI\ContainerBuilder();
@@ -62,12 +98,10 @@ class Router{
 			} catch (Exception $e) {
 				echo $e->getMessage();
 			}
-		}else{
-			echo("access denied");
 		}
 	}
 
-	final private function sanitize(array $dirty){
+	private function sanitize(array $dirty){
 		$clean_input = [];
     	foreach ($dirty as $k => $v) {
             if ($v != '') {

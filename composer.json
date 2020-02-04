@@ -1,0 +1,33 @@
+{
+    "name": "seven/router",
+    "description": "Simple Php High Speed Web Application Router library",
+    "type": "library",
+    "version": "v0.9.1",
+    "license": "MIT",
+    "minimum-stability": "dev",
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    },
+    "autoload": {
+        "classmap": {
+            "Seven\\Router\\Router": "Router.php"
+        }
+    },
+    "require": {
+        "php": ">=7.1.0",
+        "php-di/php-di": "6.0.11"
+    },
+    "authors": [
+        {
+            "name": "Elisha Temiloluwa a.k.a TemmyScope",
+            "email": "temmyscope@protonmail.com",
+            "role": "Developer"
+        }
+    ],
+    "keywords": [
+        "router",
+        "fast router", "simple router"
+    ]
+}
