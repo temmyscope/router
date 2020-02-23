@@ -3,7 +3,8 @@ namespace Seven\Router;
 
 use \Exception;
 use Seven\Router\RouteParser;
-use \DI;
+use Seven\Router\Route;
+use Seven\Router\DITrait;
 /**
  * @author Elisha Temiloluwa a.k.a TemmyScope (temmyscope@protonmail.com)
  * @copyright MIT
@@ -12,33 +13,39 @@ use \DI;
 
 class Router{
 
+	use DITrait;
+
 	/**
 	* @var bool $authorised: Allows or restricts users' access to defined controllers
 	* @var string $namespace
 	* @var Array $controller
 	*/
-	private bool $authorised = true;
-	private string $namespace;
-	private string $controller;
-	private string $method;
-	private array $params;
-	private string $uri;
-	private string $default;
-
-	/**
+	private /*bool*/ $authorised = true;
+	private /*string*/ $controller;
+	private /*string*/ $method;
+	private /*array*/ $params;
+	private /*string*/ $uri;
+	/*
 	* constraint: The default controller must contain an index method (for fallback). 
 	* and can not be restricted (i.e. can not require login)
 	* @param <string> namespace
-	* @param <String> default: the default controller 
+	* @param <String> default: the default route
+
+	$config = [
+		'namespace' => , //namespace for controllers
+		'app_url' => , //base url for the application
+		'default_controller' => , //the default controller to use use when no controller could be accessed
+		'default_method' => , 
+	];
 	*/
 
-	public function __construct(string $namespace, string $default)
+	public function __construct(Array $config)
 	{
-		$this->namespace = $namespace.'\\';
-		$this->uri = RouteParser::build();
-		[$this->controller, $this->method, $this->params] = $this->parsed($this->uri);
+		$this->config = $config;
+		[$this->controller, $this->method, $this->params] = RouteParser::build(
+			$config['default_controller'], $config['default_method'] ?? 'index'
+		);
 		$this->params = $this->sanitize($this->params);
-		$this->default = ucfirst($default)."Controller";
 	}
 
 	/**
@@ -63,47 +70,36 @@ class Router{
 	* </pre>
 	* @return void
 	*/
-	public function match(array $controllers): void
+	public function match(array $controllers)
 	{
-		if ( $this->authorised && $this->defined($controllers, $this->controller, $this->method) ){
-			try {
-				$this->diLoad([ $this->namespace.$this->controller, $this->method ], $this->params);
-			} catch (Exception $e) {
-				echo $e->getMessage();
+		if ($this->defined($controllers, $this->controller, $this->method) ){
+			if ($this->authorised) {
+				return self::diLoad([ $this->getConfig('namespace').$this->controller, $this->method ], $this->params);
+			}else {
+				return self::diLoad([ $this->getConfig('namespace').$this->getConfig('default_controller'), $this->getConfig('default_method') ], $this->params);
 			}
 		}
 	}
 
-	public function call(array $controllers): void
+	public function call(array $controllers, Callable $fn)
 	{
 		if ($this->defined($controllers, $this->controller, $this->method) ){
-			try {
-				$this->diLoad([ $this->namespace.$this->controller, $this->method ], $this->params);
-			} catch (Exception $e) {
-				echo $e->getMessage();
+			if ($this->authorised) {
+				return self::diLoad([ $this->getConfig('namespace').$this->controller, $this->method ], $this->params);
+			}else {
+				return self::diLoad($fn);
 			}
 		}
+	}
+
+	protected function getConfig(string $var)
+	{
+		return $this->config[$var];
 	}
 
 	protected function defined(array $controllers, string $controller, string $method): bool
 	{
 		return (array_key_exists($controller , $controllers ) && in_array($method, $controllers[$controller])) ? true : false;
-	}
-
-	protected function parse(Array $uri = []): Array
-	{
-		$parsed = new SplFixedArray(3);
-		$parsed[0] = (isset($uri[0])) ? ucfirst($uri[0]).'Controller' : $this->default;
-		$parsed[1] = $uri[1] ?? 'index';
-		$parsed[2] = $uri[2] ?? [];
-		return $parsed;
-	}
-
-	protected function diLoad(Callable $fn, array $params = []){
-		$builder = new DI\ContainerBuilder();
-		$container = $builder->build();
-		$container->call($fn, $params);
-		unset($container);
 	}
 
 	private function sanitize(array $dirty){

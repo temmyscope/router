@@ -12,6 +12,6 @@ final class Url
 	
 	public static function get(): String
 	{
-		return (isset($_SERVER['PATH_INFO'])) ? $_SERVER['PATH_INFO'] : "";
+		return (isset($_SERVER['PATH_INFO'])) ? $_SERVER['PATH_INFO'] : "/";
 	}
 }

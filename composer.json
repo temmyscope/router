@@ -12,7 +12,10 @@
     },
     "autoload": {
         "classmap": {
-            "Seven\\Router\\Router": "Router.php"
+            "Seven\\Router\\Router": "Router.php",
+            "Seven\\Router\\Route": "Route.php",
+            "Seven\\Router\\Url": "Url.php",
+            "Seven\\Router\\RouteParser": "RouteParser.php"
         }
     },
     "require": {
