@@ -1,9 +1,9 @@
 <?php
 namespace Seven\Router;
 
-use \SplFixedArray;
 use \Exception;
-
+use Seven\Router\RouteParser;
+use \DI;
 /**
  * @author Elisha Temiloluwa a.k.a TemmyScope (temmyscope@protonmail.com)
  * @copyright MIT
@@ -17,10 +17,13 @@ class Router{
 	* @var string $namespace
 	* @var Array $controller
 	*/
-	private $authorised = true;
-	private $namespace = "";
-	private $controller;
-
+	private bool $authorised = true;
+	private string $namespace;
+	private string $controller;
+	private string $method;
+	private array $params;
+	private string $uri;
+	private string $default;
 
 	/**
 	* constraint: The default controller must contain an index method (for fallback). 
@@ -32,40 +35,20 @@ class Router{
 	public function __construct(string $namespace, string $default)
 	{
 		$this->namespace = $namespace.'\\';
-		$url = (isset($_SERVER['PATH_INFO'])) ? explode('/', $_SERVER['PATH_INFO']) : [];
-		array_shift($url);
-		$url = $this->sanitize($url);
-		$this->controller = new SplFixedArray(3);
-		if ( isset($url[0]) ) {
-			$controller = ucfirst(substr_replace($url[0], '', strcspn($url[0], '.'))).'Controller';
-		}else{
-			$controller = $default;
-		}
-		$this->controller[0] = $controller;
-		$this->controller[1] = $url[1] ?? 'index';
-		$this->controller[2] = $url[2] ?? [];
+		$this->uri = RouteParser::build();
+		[$this->controller, $this->method, $this->params] = $this->parsed($this->uri);
+		$this->params = $this->sanitize($this->params);
+		$this->default = ucfirst($default)."Controller";
 	}
 
-
 	/**
-	* @param <Array> sessions:name of sessions required to access the chained controller routes
-	* <pre>
-	* $sessions = [
-	* (string) Session Name.
-	* (string) Session Name.
-	* ]
-	* </pre>
+	* @param Callable $fn that authenticates api request and must return TRUE if authentication and authorization was successful.
 	* @return <Router> returns object of this class for method chaining.
 	*/
 
-	public function allow(array $sessions): Router
+	public function requires(Callable $fn)
 	{
-		foreach ($sessions as $key) {
-			if (!isset($_SESSION[$key])) {
-				$this->authorised = false;
-				break;
-			}
-		}
+		$this->authorised = ( $fn() === true) ? true : false;
 		return $this;
 	}
 
@@ -80,25 +63,47 @@ class Router{
 	* </pre>
 	* @return void
 	*/
-	public function routes(array $controllers): void
+	public function match(array $controllers): void
 	{
-		if ( array_key_exists($this->controller[0] , $controllers ) && 
-			in_array($this->controller[1], $controllers[ $this->controller[1] ])  && 
-			$this->authorised === true
-		) {
+		if ( $this->authorised && $this->defined($controllers, $this->controller, $this->method) ){
 			try {
-				$controller = $this->namespace.$this->controller[0];
-				$builder = new \DI\ContainerBuilder();
-				$builder->enableCompilation(__DIR__ . '/tmp');
-				$builder->writeProxiesToFile(true, __DIR__ . '/tmp/proxies');
-				$builder->useAnnotations(false);
-				$container = $builder->build();
-				$container->call([ $controller, $this->controller[1] ], $this->controller[2]);
-				unset($container);
+				$this->diLoad([ $this->namespace.$this->controller, $this->method ], $this->params);
 			} catch (Exception $e) {
 				echo $e->getMessage();
 			}
 		}
+	}
+
+	public function call(array $controllers): void
+	{
+		if ($this->defined($controllers, $this->controller, $this->method) ){
+			try {
+				$this->diLoad([ $this->namespace.$this->controller, $this->method ], $this->params);
+			} catch (Exception $e) {
+				echo $e->getMessage();
+			}
+		}
+	}
+
+	protected function defined(array $controllers, string $controller, string $method): bool
+	{
+		return (array_key_exists($controller , $controllers ) && in_array($method, $controllers[$controller])) ? true : false;
+	}
+
+	protected function parse(Array $uri = []): Array
+	{
+		$parsed = new SplFixedArray(3);
+		$parsed[0] = (isset($uri[0])) ? ucfirst($uri[0]).'Controller' : $this->default;
+		$parsed[1] = $uri[1] ?? 'index';
+		$parsed[2] = $uri[2] ?? [];
+		return $parsed;
+	}
+
+	protected function diLoad(Callable $fn, array $params = []){
+		$builder = new DI\ContainerBuilder();
+		$container = $builder->build();
+		$container->call($fn, $params);
+		unset($container);
 	}
 
 	private function sanitize(array $dirty){
