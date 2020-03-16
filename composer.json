@@ -2,7 +2,7 @@
     "name": "seven/router",
     "description": "Simple Php High Speed Web Application Router library",
     "type": "library",
-    "version": "v0.9.1",
+    "version": "v0.9.2",
     "license": "MIT",
     "minimum-stability": "dev",
     "config": {
@@ -14,8 +14,7 @@
         "classmap": {
             "Seven\\Router\\Router": "Router.php",
             "Seven\\Router\\Route": "Route.php",
-            "Seven\\Router\\Url": "Url.php",
-            "Seven\\Router\\RouteParser": "RouteParser.php"
+            "Seven\\Router\\DITrait": "DITrait.php"
         }
     },
     "require": {

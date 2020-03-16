@@ -6,22 +6,33 @@ SevenRouter is a fast but simple router
 
 The usage of this library looks something like this:
 
+```php
 use Seven\Router\Router;
+use Seven\Router\Route;
+use app\Model\FileUploader;
 
-$object = new Router($controller_namespace, $default_controller);
-$router = new Router("app\controller", DEFAULT_CONTROLLER);
+Route::get('/home/')->inject([ new FileUploader()])->call( [ app\controller\HomeController::class, "index"]);
 
-
-$object->routes([
-	an array of controllers and their available endpoints/methods
+$router = new Router( [
+	'default_controller' => AuthController::class,
+	'default_method' => "index",
+	'namespace' => 'app\controller\\',
+	'app_url' => 'http://localhost/alt-vel/',
 ]);
 
-$router->allow([ CURRENT_USER_SESSION_NAME ])->routes([
+$router->requires( 
+	function(){
+		if (isset($_SESSION[CURRENT_USER_SESSION_NAME])) {
+			return true;
+		}
+	}
+)->call([
 		'SearchController' => [],
-		'HomeController' => [],
-]);
+		'HomeController' => [ 'index' ],
+], [ app\controller\AuthController::class, "index"]);
 
-$router->routes([
-	'AuthController' => ['login', 'register', 'forgot_password', 'activate', 'about', 'logout'],
+$router->match([
+	'AuthController' => [ 'index', 'login', 'register', 'forgot_password', 'activate', 'about', 'logout'],
 	'ErrorsController' => ['_404', '_405', 'bad', 'denied', 'unknown']
 ]);
+```

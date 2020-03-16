@@ -2,8 +2,6 @@
 namespace Seven\Router;
 
 use \Exception;
-use Seven\Router\RouteParser;
-use Seven\Router\Route;
 use Seven\Router\DITrait;
 /**
  * @author Elisha Temiloluwa a.k.a TemmyScope (temmyscope@protonmail.com)
@@ -20,11 +18,10 @@ class Router{
 	* @var string $namespace
 	* @var Array $controller
 	*/
-	private /*bool*/ $authorised = true;
+	public /*bool*/ $authorised = true;
 	private /*string*/ $controller;
 	private /*string*/ $method;
 	private /*array*/ $params;
-	private /*string*/ $uri;
 	/*
 	* constraint: The default controller must contain an index method (for fallback). 
 	* and can not be restricted (i.e. can not require login)
@@ -42,10 +39,10 @@ class Router{
 	public function __construct(Array $config)
 	{
 		$this->config = $config;
-		[$this->controller, $this->method, $this->params] = RouteParser::build(
+		[$this->controller, $this->method, $this->params] = $this->routeParser(
 			$config['default_controller'], $config['default_method'] ?? 'index'
 		);
-		$this->params = $this->sanitize($this->params);
+		$this->params = self::sanitize($this->params);
 	}
 
 	/**
@@ -70,26 +67,17 @@ class Router{
 	* </pre>
 	* @return void
 	*/
-	public function match(array $controllers)
-	{
-		if ($this->defined($controllers, $this->controller, $this->method) ){
-			if ($this->authorised) {
-				return self::diLoad([ $this->getConfig('namespace').$this->controller, $this->method ], $this->params);
-			}else {
-				return self::diLoad([ $this->getConfig('namespace').$this->getConfig('default_controller'), $this->getConfig('default_method') ], $this->params);
-			}
-		}
-	}
 
-	public function call(array $controllers, Callable $fn)
+	public function call(array $controllers, ?Callable $fallback = null)
 	{
-		if ($this->defined($controllers, $this->controller, $this->method) ){
-			if ($this->authorised) {
-				return self::diLoad([ $this->getConfig('namespace').$this->controller, $this->method ], $this->params);
-			}else {
-				return self::diLoad($fn);
+		if ( $this->defined($controllers, $this->controller, $this->method) && $this->authorised){
+			self::diLoad([ $this->getConfig('namespace').$this->controller, $this->method ], $this->params);
+		}else{
+			if (!is_null($fallback)) {
+				self::diLoad($fallback);
 			}
 		}
+		$this->authorised = true;
 	}
 
 	protected function getConfig(string $var)
@@ -99,16 +87,25 @@ class Router{
 
 	protected function defined(array $controllers, string $controller, string $method): bool
 	{
-		return (array_key_exists($controller , $controllers ) && in_array($method, $controllers[$controller])) ? true : false;
+		return (array_key_exists($controller , $controllers ) && in_array($method, $controllers[$controller]));
 	}
 
-	private function sanitize(array $dirty){
-		$clean_input = [];
-    	foreach ($dirty as $k => $v) {
-            if ($v != '') {
-				$clean_input[$k] = htmlentities($v, ENT_QUOTES, 'UTF-8');
-			}
-        }
-        return $clean_input;
-  	}
+	public function routeParser(string $default, string $method = 'index'): SplFixedArray
+	{
+		$url = (isset($_SERVER['PATH_INFO'])) ? explode('/', $_SERVER['PATH_INFO']) : [];
+		array_shift($url);
+		$controller = new SplFixedArray(3);
+		if (!isset($url[0])) {
+			$controller[0] = $default;
+			$controller[1] = $method;
+			$controller[2] = $url;
+		} else {
+			$controller[0] = ucfirst($url[0]).'Controller';
+			array_shift($url);
+			$controller[1] = $url[1] ?? 'index';
+			array_shift($url);
+			$controller[2] = $url;
+		}
+		return $controller;
+	}
 }

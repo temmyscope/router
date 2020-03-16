@@ -5,9 +5,6 @@ namespace Seven\Router;
 * @author Elisha Temiloluwa a.k.a TemmyScope (temmyscope@protonmail.com)
 * @copyright MIT
 */
-
-use Seven\Router\Url;
-use Seven\Router\RouteParser;
 use Seven\Router\DITrait;
 use Seven\Vars\Strings;
 
@@ -36,12 +33,12 @@ final class Route
 
 	public static function call(Callable $fn, ?Callable $fallback = null)
 	{
-		$url = Url::get();
+		$url = self::getUrl();
 		if ( Strings::startsWith( $url, static::$uri, true)){
 			if( static::$authorised ) {
-				return static::diLoad($fn, explode('/', substr($url, 0, static::$uri ))  );
+				return static::diLoad($fn, array_merge( static::$params, static::getParams($url, static::$uri)) );
 			}else{
-				if (!is_null($fallback)) {
+				if (is_callable($fallback)) {
 					return static::diLoad($fallback);
 				}
 			}
@@ -50,7 +47,7 @@ final class Route
 
 	public static function load(Callable $fn, ?Callable $fallback = null)
 	{
-		if ( Strings::match( Url::get(), static::$uri, true)){
+		if ( Strings::match( self::getUrl(), static::$uri, true)){
 			if( static::$authorised ) {
 				return static::diLoad($fn, static::$params );
 			}else{
@@ -59,18 +56,21 @@ final class Route
 				}
 			}
 		}
-		
-			
 	}
 
-	public static function inject($args): Route
+	public static function inject(array $args): Route
 	{
 		static::$params = $args;
 		return static::$instance;
 	}
 
-	public function getParams()
+	protected function getParams($url, $uri): array
 	{
-		return RouteParser::build('')[2];
+		return static::sanitize( explode( '/', substr_replace( $url, '', 0, strlen($uri) ) ) );
+	}
+
+	protected static function getUrl(): String
+	{
+		return (isset($_SERVER['PATH_INFO'])) ? $_SERVER['PATH_INFO'] : "/";
 	}
 }
