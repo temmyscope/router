@@ -5,72 +5,98 @@ namespace Seven\Router;
 * @author Elisha Temiloluwa a.k.a TemmyScope (temmyscope@protonmail.com)
 * @copyright MIT
 */
-use Seven\Router\DITrait;
-use Seven\Vars\Strings;
+use \DI;
 
-final class Route
+class Route
 {
-	use DITrait;
+	private $routes = [];
 
-	private static /*?Route*/ $instance = null;
-	private static /*bool*/ $authorised = true;
-	private static /*string*/ $uri = '';
-	private static /*string*/ $params = [];
-
-	public static function get(string $uri, ?Callable $fn = null): Route
+	public function __construct($namespace)
 	{
-		if (static::$instance === null) {
-		 	static::$instance = new static();
-		 	static::$uri = $uri;
-		 	if (!is_null($fn)) {
-		 		self::$authorised = ( call_user_func($fn) == true) ? true : false;
-		 	} else {
-		 		self::$authorised =  true;
-		 	}
-		}
-	 	return static::$instance;
+		$this->url= ( isset($_SERVER['PATH_INFO']) && $_SERVER['PATH_INFO'] != '/') ? rtrim($_SERVER['PATH_INFO'] , '/') : '/';
+		$this->namespace= $namespace;
+		$this->request_method = strtolower($_SERVER['REQUEST_METHOD']);
+		$this->cached = $this->cache()->get(); 
 	}
 
-	public static function call(Callable $fn, ?Callable $fallback = null)
+	/**
+	* $array = ['prefix' => '/api', 'guard' => [callable that must return true 
+	* for the routes in this group to be processed ] ] ]
+	*/
+	public function group(array $array, Closure $fn)
 	{
-		$url = self::getUrl();
-		if ( Strings::startsWith( $url, static::$uri, true)){
-			if( static::$authorised ) {
-				return static::diLoad($fn, array_merge( static::$params, static::getParams($url, static::$uri)) );
-			}else{
-				if (is_callable($fallback)) {
-					return static::diLoad($fallback);
-				}
+		if( array_key_exists('prefix', $array) && !Strings::startswith($this->url, $array['prefix']) ){
+			return null;
+		}
+		//guard ust be callable and must return true in order for the other routes in the closure to be processed
+		if( array_key_exists('guard', $array) ){
+			$fn();
+		}
+	}
+
+	public function __call($method, $args)
+	{
+		if( $this->cached === false ){
+			$method = strtolower($method);
+			$uri = strtolower($args[0]);
+			$this->routes[$method][$uri] =  $args[1];
+		}
+	}
+
+
+	public function run()
+	{
+		if ($this->cached === false) {
+			$this->cache()->set( (array)$this->routes );
+		}
+		return $this->processRequest( $this->cached, $this->request_method );
+	}
+
+	public function processRequest(array $routes, string $request_method)
+	{
+		if ( $fn = $routes[$request_method][$this->url] ) {
+			return self::diLoad($fn);
+		}else{
+			$exp = explode('/', $this->url);
+			$param = $this->sanitize(array_pop($exp));
+			$url_to_uri = implode('/', $exp).'/';
+			if ($fn = $routes[$request_method][$url_to_uri] ) {
+				return self::diLoad($fn, $param);
 			}
 		}
 	}
 
-	public static function load(Callable $fn, ?Callable $fallback = null)
+	private function cache($dir = __DIR__)
 	{
-		if ( Strings::match( self::getUrl(), static::$uri, true)){
-			if( static::$authorised ) {
-				return static::diLoad($fn, static::$params );
-			}else{
-				if (!is_null($fallback)) {
-					return static::diLoad($fallback);
-				}
+		return new class($dir){
+
+			public function __construct($dir)
+			{
+				$this->dir = $dir;
 			}
-		}
+			public function get() {
+				return @include $this->dir.'/tmp/route7.cache.php' ?? false;
+			}
+			public function set(array $val) {
+			   	file_put_contents($this->dir.'/tmp/route7.cache.php', '<?php return '.$val.';', LOCK_EX);
+			}
+			public function exists(): bool
+			{
+				return file_exists($this->dir.'/tmp/route7.cache.php');
+			}
+		};
 	}
 
-	public static function inject(array $args): Route
-	{
-		static::$params = $args;
-		return static::$instance;
+	protected static function diLoad(Callable $fn, $params = []){
+		$builder = new DI\ContainerBuilder();
+		$builder->enableCompilation(__DIR__ . '/tmp');
+		$builder->writeProxiesToFile(true, __DIR__ . '/tmp/proxies');
+		$builder->useAnnotations(false);
+		$container = $builder->build();
+		$container->call($fn, $params);
 	}
 
-	protected function getParams($url, $uri): array
-	{
-		return static::sanitize( explode( '/', substr_replace( $url, '', 0, strlen($uri) ) ) );
-	}
-
-	protected static function getUrl(): String
-	{
-		return (isset($_SERVER['PATH_INFO'])) ? $_SERVER['PATH_INFO'] : "/";
-	}
+	private function sanitize($dirty){
+        return htmlentities($dirty, ENT_QUOTES, 'UTF-8');;
+  	}
 }
