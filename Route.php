@@ -3,8 +3,9 @@ namespace Seven\Router;
 
 /**
 * @author Elisha Temiloluwa a.k.a TemmyScope (temmyscope@protonmail.com)
-* @copyright MIT
+* @package Seven Router Package
 */
+
 use \DI;
 
 class Route
@@ -16,20 +17,12 @@ class Route
 		$this->url= ( isset($_SERVER['PATH_INFO']) && $_SERVER['PATH_INFO'] != '/') ? rtrim($_SERVER['PATH_INFO'] , '/') : '/';
 		$this->namespace= $namespace;
 		$this->request_method = strtolower($_SERVER['REQUEST_METHOD']);
-		$this->cached = $this->cache()->get(); 
+		$this->cached = $this->cache()->get();
 	}
 
-	/**
-	* $array = ['prefix' => '/api', 'guard' => [callable that must return true 
-	* for the routes in this group to be processed ] ] ]
-	*/
 	public function group(array $array, Closure $fn)
 	{
-		if( array_key_exists('prefix', $array) && !Strings::startswith($this->url, $array['prefix']) ){
-			return null;
-		}
-		//guard ust be callable and must return true in order for the other routes in the closure to be processed
-		if( array_key_exists('guard', $array) ){
+		if( isset($array['prefix']) && strpos($this->url, $array['prefix']) == 0 ){
 			$fn();
 		}
 	}
@@ -39,17 +32,20 @@ class Route
 		if( $this->cached === false ){
 			$method = strtolower($method);
 			$uri = strtolower($args[0]);
-			$this->routes[$method][$uri] =  $args[1];
+			$callable = $args[1];
+			$callable[0] = $this->namespace.'\\'.$callable[0];
+			$this->routes[$method][$uri] =  $callable;
 		}
 	}
 
 
 	public function run()
 	{
-		if ($this->cached === false) {
-			$this->cache()->set( (array)$this->routes );
+		if ( $this->cached !== false ) {
+			return $this->processRequest( $this->cached, $this->request_method );
 		}
-		return $this->processRequest( $this->cached, $this->request_method );
+		$this->cache()->set( $this->routes );
+		return $this->processRequest( $this->routes, $this->request_method );
 	}
 
 	public function processRequest(array $routes, string $request_method)
@@ -69,7 +65,6 @@ class Route
 	private function cache($dir = __DIR__)
 	{
 		return new class($dir){
-
 			public function __construct($dir)
 			{
 				$this->dir = $dir;
@@ -78,7 +73,7 @@ class Route
 				return @include $this->dir.'/tmp/route7.cache.php' ?? false;
 			}
 			public function set(array $val) {
-			   	file_put_contents($this->dir.'/tmp/route7.cache.php', '<?php return '.$val.';', LOCK_EX);
+			   	file_put_contents($this->dir.'/tmp/route7.cache.php', "<?php return ".var_export($val, true).";", LOCK_EX);
 			}
 			public function exists(): bool
 			{

@@ -37,15 +37,14 @@ $router->match([
 
 The usage of the Route Class of this library looks something like this:
 ```php
-use Seven\Router\Route;
+
+use Seven\Router\Route("app\Controllers"); //expects a compulsory 
 
 $route = new Route();
 $route->get('/users', function (){ //represents route that expects no parameter
 	return ;
 });
-$route->get('/user/', function (){ //represents routes that expect one or more parameters
-	return ;
-});
+$route->get('/user/', []); //represents routes that expects a parameter
 
 
 ```
