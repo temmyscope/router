@@ -195,89 +195,68 @@ class Route
 	}
 
 
-	public function run()
-	{
-		$this->rs[$this->request_method];
 
+}
+
+<?php
+namespace Seven\Router;
+
+//An uncache version.... preferable with number of exposed routes below 30
+* @author Elisha Temiloluwa a.k.a TemmyScope (temmyscope@protonmail.com)
+* @package Seven Router Package
+
+
+use \DI;
+
+class Route
+{
+	public $routes = [];
+	private $prefix = "";
+
+	public function __construct($namespace = '')
+	{
+		$this->url= ( isset($_SERVER['PATH_INFO']) && $_SERVER['PATH_INFO'] != '/') ? rtrim($_SERVER['PATH_INFO'] , '/') : '/';
+		$this->namespace= $namespace;
+		$this->request_method = strtolower($_SERVER['REQUEST_METHOD']);
+	}
+
+	public function group(array $array, Callable $fn)
+	{
+		if( isset($array['prefix']) ){
+			$this->prefix = $array['prefix'];
+			$fn($this);
+		}
 	}
 
 	public function __call($method, $args)
 	{
 		$method = strtolower($method);
-		$request_method = strtolower($_SERVER['REQUEST_METHOD']);
-		$uri = strtolower($args[0]);
-		if ($method === $request_method) {
-			$call = $method.'Request';
-			$this->$call( $uri, $args[1] );
+		$uri = $this->prefix.strtolower($args[0]);
+		$callable = $args[1];
+		if( is_array($callable) ){
+			$callable[0] = $this->namespace.'\\'.$callable[0];
 		}
-		/*
-		switch($request_method) {
-		 	case 'get':
-				$this->getRequest($uri, $args[1]);
-		 	break;
-			case 'post':
-				$this->postRequest($uri, $args[1]);
-		 	break;
-		 	case 'put':
-				$this->putRequest($uri, $args[1]);
-		 	break;
-		 	case 'delete':
-				$this->deleteRequest($uri, $args[1]);
-		 	break;
-		 	default:
-				http_response_code(405);
-		}
-		*/
+		$this->routes[$method][$uri] =  $callable;
 	}
 
 
-	public function getRequest(string $uri, Callable $fn)
+	public function run()
 	{
-		if (strpos($this->url, $uri) !== false) {
-			$param = explode('/', $uri);
-			dnd($param);
-
-			$param_string = substr_replace( $this->url, '', 0, strlen($uri) );
-
-			if ( rtrim($uri.$param_string , '/')  === rtrim($this->url, '/') ) {
-				$param_array = explode('/', $param_string);
-				self::diLoad($fn, $this->sanitize( $param_array) );
-				exit;
-			}
-		}
+		return $this->processRequest();
 	}
 
-	public function postRequest(string $uri, Callable $fn){
-		if (strpos($this->url, $uri) !== false) {
-			$param_string = substr_replace( $this->url, '', 0, strlen($uri) );
-			if ( rtrim($uri.$param_string , '/')  === rtrim($this->url, '/') ) {
-				$param_array = explode('/', $param_string);
-				self::diLoad($fn, $this->sanitize( $param_array) );
-				exit;
-			}
-		}
-	}
-
-	public function putRequest(string $uri, Callable $fn)
+	public function processRequest()
 	{
-		if (strpos($this->url, $uri) !== false) {
-			$param_string = substr_replace( $this->url, '', 0, strlen($uri) );
-			if ( rtrim($uri.$param_string , '/')  === rtrim($this->url, '/') ) {
-				$param_array = explode('/', $param_string);
-				self::diLoad($fn, $this->sanitize( $param_array) );
-				exit;
-			}
-		}
-	}
-
-	public function deleteRequest(string $uri, Callable $fn)
-	{
-		if (strpos($this->url, $uri) !== false) {
-			$param_string = substr_replace( $this->url, '', 0, strlen($uri) );
-			if ( rtrim($uri.$param_string , '/')  === rtrim($this->url, '/') ) {
-				$param_array = explode('/', $param_string);
-				self::diLoad($fn, $this->sanitize( $param_array) );
-				exit;
+		if ( @$fn = $this->routes[$this->request_method][$this->url] ) {
+			return self::diLoad($fn);
+		}else{
+			$exp = explode('/', $this->url);
+			$param = $this->sanitize(array_pop($exp));
+			$url_to_uri = implode('/', $exp).'/';
+			if (@$fn = $this->routes[$this->request_method][$url_to_uri] ) {
+				return self::diLoad($fn, [$param]);
+			}else{
+				return http_response_code(404);
 			}
 		}
 	}
@@ -291,14 +270,9 @@ class Route
 		$container->call($fn, $params);
 	}
 
-	private function sanitize(array $dirty){
-		$clean_input = [];
-    	foreach ($dirty as $k => $v) {
-            if ($v != '') {
-            	$clean_input[$k] = htmlentities($v, ENT_QUOTES, 'UTF-8');
-            }
-        }
-        return $clean_input;
+	private function sanitize($dirty){
+        return htmlentities($dirty, ENT_QUOTES, 'UTF-8');;
   	}
 }
+
 */
