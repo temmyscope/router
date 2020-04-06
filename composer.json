@@ -2,7 +2,7 @@
     "name": "sevens/router",
     "description": "Simple Php High Speed Web Application Router library",
     "type": "library",
-    "version": "v1.0.0",
+    "version": "v1.0.1",
     "license": "MIT",
     "minimum-stability": "dev",
     "config": {
@@ -13,8 +13,7 @@
     "autoload": {
         "classmap": {
             "Seven\\Router\\Router": "Router.php",
-            "Seven\\Router\\Route": "Route.php",
-            "Seven\\Router\\DITrait": "DITrait.php"
+            "Seven\\Router\\Route": "Route.php"
         }
     },
     "require": {
