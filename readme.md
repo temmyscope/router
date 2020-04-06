@@ -43,7 +43,7 @@ Note: The difference between a route that expects a parameter and one that doesn
 /user => represents the /user route and expects no parameteror variable
 
 The average speed of the Route library is 0.04 for up to 60 routes secs per request.
-In order to make the routes recompile and show newly added route(s), delete the already compiled route7.cache.php file from the directory you provided to the Route library.
+In order to make the routes recompile and show newly added route(s), delete the already compiled route7.cache.php file from the directory you provided to the Route library, as well as all the files in the /tmp sub-directory.
 
 The usage of the Route Class of this library looks something like this:
 ```php

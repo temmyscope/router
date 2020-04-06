@@ -54,13 +54,13 @@ class Route
 	protected function processRequest(array $routes)
 	{
 		if ( @$fn = $routes[$this->request_method][$this->url] ) {
-			return self::diLoad($fn);
+			return $this->diLoad($fn);
 		}else{
 			$exp = explode('/', $this->url);
 			$param = $this->sanitize(array_pop($exp));
 			$url_to_uri = implode('/', $exp).'/';
 			if (@$fn = $routes[$this->request_method][$url_to_uri] ) {
-				return self::diLoad($fn, [$param]);
+				return $this->diLoad($fn, [$param]);
 			}else{
 				return http_response_code(404);
 			}
@@ -77,10 +77,10 @@ class Route
 		file_put_contents($this->dir.'/route7.cache.php', "<?php return ".var_export($this->routes, true).";", LOCK_EX);
 	}
 
-	protected static function diLoad(Callable $fn, $params = []){
+	protected function diLoad(Callable $fn, $params = []){
 		$builder = new DI\ContainerBuilder();
-		$builder->enableCompilation(__DIR__ . '/tmp');
-		$builder->writeProxiesToFile(true, __DIR__ . '/tmp/proxies');
+		$builder->enableCompilation($this->dir . '/tmp');
+		$builder->writeProxiesToFile(true, $this->dir . '/tmp/proxies');
 		$builder->useAnnotations(false);
 		$container = $builder->build();
 		$container->call($fn, $params);

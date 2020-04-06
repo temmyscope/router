@@ -2,7 +2,7 @@
     "name": "sevens/router",
     "description": "Simple Php High Speed Web Application Router library",
     "type": "library",
-    "version": "v0.9.3",
+    "version": "v1.0.0",
     "license": "MIT",
     "minimum-stability": "dev",
     "config": {
