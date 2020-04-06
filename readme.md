@@ -19,7 +19,8 @@ $router = new Router([
 	'namespace' => 'App\Controllers',
 	//default Controller & method as fallback
 	'controller' => AuthController::class,
-	'method' => "index"
+	'method' => "index",
+	'cache_dir' => __DIR__.'/cache'
 ]);
 if (($_SESSION['id'])) { //To restricts certain routes from being accessed without a certain session set
 	$router->call([
