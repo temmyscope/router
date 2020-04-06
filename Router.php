@@ -2,7 +2,7 @@
 namespace Seven\Router;
 
 use \Exception;
-use Seven\Router\DITrait;
+use \DI;
 /**
  * @author Elisha Temiloluwa a.k.a TemmyScope (temmyscope@protonmail.com)
  * @copyright MIT
@@ -11,49 +11,22 @@ use Seven\Router\DITrait;
 
 class Router{
 
-	use DITrait;
-
 	/**
-	* @var bool $authorised: Allows or restricts users' access to defined controllers
 	* @var string $namespace
 	* @var Array $controller
 	*/
-	public /*bool*/ $authorised = true;
 	private /*string*/ $controller;
 	private /*string*/ $method;
 	private /*array*/ $params;
-	/*
-	* constraint: The default controller must contain an index method (for fallback). 
-	* and can not be restricted (i.e. can not require login)
-	* @param <string> namespace
-	* @param <String> default: the default route
-
-	$config = [
-		'namespace' => , //namespace for controllers
-		'app_url' => , //base url for the application
-		'default_controller' => , //the default controller to use use when no controller could be accessed
-		'default_method' => , 
-	];
-	*/
+	
 
 	public function __construct(Array $config)
 	{
 		$this->config = $config;
 		[$this->controller, $this->method, $this->params] = $this->routeParser(
-			$config['default_controller'], $config['default_method'] ?? 'index'
+			$config['controller'], $config['method']
 		);
-		$this->params = self::sanitize($this->params);
-	}
-
-	/**
-	* @param Callable $fn that authenticates api request and must return TRUE if authentication and authorization was successful.
-	* @return <Router> returns object of this class for method chaining.
-	*/
-
-	public function requires(Callable $fn)
-	{
-		$this->authorised = ( $fn() === true) ? true : false;
-		return $this;
+		$this->params = $this->sanitize($this->params);
 	}
 
 	/**
@@ -68,17 +41,31 @@ class Router{
 	* @return void
 	*/
 
-	public function call(array $controllers, ?Callable $fallback = null)
+	public function call(array $controllers)
 	{
-		if ( $this->defined($controllers, $this->controller, $this->method) && $this->authorised){
-			self::diLoad([ $this->getConfig('namespace').$this->controller, $this->method ], $this->params);
-		}else{
-			if (!is_null($fallback)) {
-				self::diLoad($fallback);
-			}
+		if ( $this->defined($controllers, $this->controller, $this->method)){
+			return self::diLoad([ $this->getConfig('namespace').$this->controller, $this->method ], $this->params);
 		}
-		$this->authorised = true;
 	}
+
+	protected static function diLoad(Callable $fn, $params = []){
+		$builder = new DI\ContainerBuilder();
+		$builder->enableCompilation(__DIR__ . '/tmp');
+		$builder->writeProxiesToFile(true, __DIR__ . '/tmp/proxies');
+		$builder->useAnnotations(false);
+		$container = $builder->build();
+		$container->call($fn, $params);
+	}
+
+	private function sanitize(array $dirty){
+		$clean_input = [];
+    	foreach ($dirty as $k => $v) {
+            if ($v != '') {
+            	$clean_input[$k] = htmlentities($v, ENT_QUOTES, 'UTF-8');
+            }
+        }
+        return $clean_input;
+  	}
 
 	protected function getConfig(string $var)
 	{
