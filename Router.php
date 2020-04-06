@@ -5,7 +5,7 @@ use \Exception;
 use \DI;
 /**
  * @author Elisha Temiloluwa a.k.a TemmyScope (temmyscope@protonmail.com)
- * @copyright MIT
+ * @package Seven Router Package
  *
 */
 
@@ -29,22 +29,10 @@ class Router{
 		$this->params = $this->sanitize($this->params);
 	}
 
-	/**
-	* @param Array $controllers: all the controllers with accessible sub array of endpoints/actions
-	* 
-	* <pre>
-	* $controller = [
-	*	'AccountController' => ['balance', 'index']
- 	*	'ProfileController' => [ 'edit', 'index']
-	* ]
-	* </pre>
-	* @return void
-	*/
-
 	public function call(array $controllers)
 	{
 		if ( $this->defined($controllers, $this->controller, $this->method)){
-			return self::diLoad([ $this->getConfig('namespace').$this->controller, $this->method ], $this->params);
+			return self::diLoad([ $this->getConfig('namespace').'\\'.$this->controller, $this->method ], $this->params);
 		}
 	}
 

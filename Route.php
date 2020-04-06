@@ -12,13 +12,13 @@ class Route
 {
 	private $routes = [];
 	private $prefix = "";
-	private $dir = __DIR__;
 
-	public function __construct($namespace = '')
+	public function __construct($namespace = '', $cache_dir = __DIR__)
 	{
 		$this->url= ( isset($_SERVER['PATH_INFO']) && $_SERVER['PATH_INFO'] != '/') ? rtrim($_SERVER['PATH_INFO'] , '/') : '/';
 		$this->namespace= $namespace;
 		$this->request_method = strtolower($_SERVER['REQUEST_METHOD']);
+		$this->dir = $cache_dir;
 		$this->cached = $this->getCache();
 	}
 
@@ -69,12 +69,12 @@ class Route
 
 	public function getCache()
 	{
-		return @include $this->dir.'/tmp/route7.cache.php' ?? false;
+		return @include $this->dir.'/route7.cache.php' ?? false;
 	}
 
 	public function setCache()
 	{
-		file_put_contents($this->dir.'/tmp/route7.cache.php', "<?php return ".var_export($this->routes, true).";", LOCK_EX);
+		file_put_contents($this->dir.'/route7.cache.php', "<?php return ".var_export($this->routes, true).";", LOCK_EX);
 	}
 
 	protected static function diLoad(Callable $fn, $params = []){
