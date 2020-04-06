@@ -1,5 +1,22 @@
 <?php
 /*
+
+	public function __call($method, $args)
+	{
+		if( $this->cached === false ){
+			$method = strtolower($method);
+			$uri = $this->prefix.strtolower($args[0]);
+			$callable = $args[1];
+			if( is_array($callable) ){
+				$callable[0] = $this->namespace.'\\'.$callable[0];
+			}
+			//in a bid to accept closure... but has not been successful
+			if ($callable instanceof \Closure) {
+				$callable = $callable->bindTo($this, Route::class);
+			}
+			$this->routes[$method][$uri] =  $callable;
+		}
+	}
 namespace Seven\Router;
 
 

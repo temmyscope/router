@@ -11,8 +11,9 @@ use \DI;
 class Route
 {
 	private $routes = [];
+	private $prefix = "";
 
-	public function __construct($namespace)
+	public function __construct($namespace = '')
 	{
 		$this->url= ( isset($_SERVER['PATH_INFO']) && $_SERVER['PATH_INFO'] != '/') ? rtrim($_SERVER['PATH_INFO'] , '/') : '/';
 		$this->namespace= $namespace;
@@ -20,10 +21,11 @@ class Route
 		$this->cached = $this->cache()->get();
 	}
 
-	public function group(array $array, Closure $fn)
+	public function group(array $array, Callable $fn)
 	{
-		if( isset($array['prefix']) && strpos($this->url, $array['prefix']) == 0 ){
-			$fn();
+		if( isset($array['prefix']) ){
+			$this->prefix = $array['prefix'];
+			$fn($this);
 		}
 	}
 
@@ -31,9 +33,11 @@ class Route
 	{
 		if( $this->cached === false ){
 			$method = strtolower($method);
-			$uri = strtolower($args[0]);
+			$uri = $this->prefix.strtolower($args[0]);
 			$callable = $args[1];
-			$callable[0] = $this->namespace.'\\'.$callable[0];
+			if( is_array($callable) ){
+				$callable[0] = $this->namespace.'\\'.$callable[0];
+			}
 			$this->routes[$method][$uri] =  $callable;
 		}
 	}
@@ -50,13 +54,13 @@ class Route
 
 	public function processRequest(array $routes, string $request_method)
 	{
-		if ( $fn = $routes[$request_method][$this->url] ) {
+		if ( @$fn = $routes[$request_method][$this->url] ) {
 			return self::diLoad($fn);
 		}else{
 			$exp = explode('/', $this->url);
 			$param = $this->sanitize(array_pop($exp));
 			$url_to_uri = implode('/', $exp).'/';
-			if ($fn = $routes[$request_method][$url_to_uri] ) {
+			if (@$fn = $routes[$request_method][$url_to_uri] ) {
 				return self::diLoad($fn, $param);
 			}
 		}
@@ -73,22 +77,18 @@ class Route
 				return @include $this->dir.'/tmp/route7.cache.php' ?? false;
 			}
 			public function set(array $val) {
-			   	file_put_contents($this->dir.'/tmp/route7.cache.php', "<?php return ".var_export($val, true).";", LOCK_EX);
-			}
-			public function exists(): bool
-			{
-				return file_exists($this->dir.'/tmp/route7.cache.php');
+				file_put_contents($this->dir.'/tmp/route7.cache.php', "<?php return ".var_export($val, true).";", LOCK_EX);
 			}
 		};
 	}
 
-	protected static function diLoad(Callable $fn, $params = []){
+	protected static function diLoad(Callable $fn, string $params = ""){
 		$builder = new DI\ContainerBuilder();
 		$builder->enableCompilation(__DIR__ . '/tmp');
 		$builder->writeProxiesToFile(true, __DIR__ . '/tmp/proxies');
 		$builder->useAnnotations(false);
 		$container = $builder->build();
-		$container->call($fn, $params);
+		$container->call($fn, [$params]);
 	}
 
 	private function sanitize($dirty){
