@@ -38,8 +38,8 @@ class Router{
 
 	protected static function diLoad(Callable $fn, $params = []){
 		$builder = new DI\ContainerBuilder();
-		$builder->enableCompilation($this->config['cache_dir']. '/tmp');
-		$builder->writeProxiesToFile(true, $this->config['cache_dir']. . '/tmp/proxies');
+		$builder->enableCompilation(__DIR__ . '/tmp');
+		$builder->writeProxiesToFile(true, __DIR__ . '/tmp/proxies');
 		$builder->useAnnotations(false);
 		$container = $builder->build();
 		$container->call($fn, $params);
