@@ -2,7 +2,7 @@
     "name": "sevens/router",
     "description": "Simple Php High Speed Web Application Router library",
     "type": "library",
-    "version": "v1.0.2",
+    "version": "v2.0.0",
     "license": "MIT",
     "minimum-stability": "dev",
     "config": {
@@ -18,7 +18,8 @@
     },
     "require": {
         "php": ">=7.1.0",
-        "php-di/php-di": "6.0.11"
+        "php-di/php-di": "6.0.11",
+        "opis/closure": "3.5.1"
     },
     "authors": [
         {

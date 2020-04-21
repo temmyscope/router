@@ -17,6 +17,120 @@
 			$this->routes[$method][$uri] =  $callable;
 		}
 	}
+
+namespace Seven\Router;
+
+
+use \Opis\Closure\SerializableClosure;
+use \DI;
+use \Closure;
+
+class Route
+{
+	private $routes = [];
+	private $prefix = "";
+	private $middleware = false;
+
+	public function __construct($namespace = '', $cache_dir = __DIR__)
+	{
+		$this->url= ( isset($_SERVER['PATH_INFO'])) ? rtrim($_SERVER['PATH_INFO'] , '/') : '/';
+		$this->namespace= $namespace;
+		$this->request_method = strtolower($_SERVER['REQUEST_METHOD']);
+		$this->dir = $cache_dir;
+		$this->cached = $this->getCache();
+	}
+
+	public function group(array $array, Callable $fn)
+	{
+		$this->middleware = $array['middleware'] ?? false;
+		if (is_array($this->middleware)){
+			$this->middleware[0] = $this->namespace.'\\'.$this->middleware[0];
+		}
+		$this->prefix = $array['prefix'] ?? "";
+		$fn($this);
+
+	}
+
+	public function __call($method, $args)
+	{
+		if( $this->cached === false ){
+			$method = strtolower($method);
+			$uri = $this->prefix.strtolower($args[0]);
+			$callable = $args[1];
+			if( is_array($callable) ){
+				$callable[0] = $this->namespace.'\\'.$callable[0];
+			}elseif(is_string($callable)){
+				$callable = serialize($callable);
+			}else{
+				$callable = serialize(new SerializableClosure($callable));
+			}
+			$this->routes[$method][$uri] =  $callable;
+		}
+	}
+
+	public function run(){
+		if ($this->middleware !== false) {
+			$route = new Route;
+			self::diLoad($this->middleware, [ function() use ($route){
+				return $route->preProcess();
+			}]);
+		} else {
+			return $this->preProcess();
+		}	
+	}
+
+	protected function preProcess()
+	{
+		if ( $this->cached === false ) {
+			$this->setCache();
+			return $this->processRequest($this->routes);
+		}
+		return $this->processRequest($this->cached);
+	}
+
+	protected function processRequest(array $routes)
+	{
+		if ( @$fn = $routes[$this->request_method][$this->url] ) {
+			return $this->diLoad($fn);
+		}else{
+			$exp = explode('/', $this->url);
+			$param = $this->sanitize(array_pop($exp));
+			$url_to_uri = implode('/', $exp).'/';
+			if (@$fn = $routes[$this->request_method][$url_to_uri] ) {
+				return $this->diLoad($fn, [$param]);
+			}else{
+				return http_response_code(404);
+			}
+		}
+	}
+
+	protected function getCache()
+	{
+		return @include $this->dir.'/route7.cache.php' ?? false;
+	}
+
+	protected function setCache()
+	{
+		file_put_contents($this->dir.'/route7.cache.php', "<?php return ".var_export($this->routes, true).";", LOCK_EX);
+	}
+
+	protected function diLoad($fn, $params = []){
+		$callable = is_string($fn) ? unserialize($fn) : $fn;
+		$builder = new DI\ContainerBuilder();
+		$builder->enableCompilation($this->dir . '/tmp');
+		$builder->writeProxiesToFile(true, $this->dir . '/tmp/proxies');
+		$builder->useAnnotations(false);
+		$container = $builder->build();
+		$container->call($callable, $params);
+	}
+
+	private function sanitize($dirty){
+        return htmlentities($dirty, ENT_QUOTES, 'UTF-8');;
+  	}
+}
+
+
+
 namespace Seven\Router;
 
 

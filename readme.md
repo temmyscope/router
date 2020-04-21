@@ -2,10 +2,15 @@
 
 => SevenRouter is developed by Elisha Temiloluwa [ TemmyScope ]	
 
-SevenRouter is a fast but simple router
+SevenRouter is an extremely lightweight and simple fast router
 
-The Router class should not be used a router for API. It processes users-enetered url into an available 
+The Router class should not be used as a router for API. It processes user-enetered url into an available 
 previously defined controller & endpoint.
+
+E.g.
+ url => /user/edit
+
+ Processed into	=> UserController::class, 'edit' method
 
 The usage of Router Class of this library looks something like this:
 
@@ -22,12 +27,13 @@ $router = new Router([
 	'method' => "index",
 	'cache_dir' => __DIR__.'/cache'
 ]);
-if (($_SESSION['id'])) { //To restricts certain routes from being accessed without a certain session set
+if (($_SESSION['id'])) { 
+	//To restricts certain routes from being accessed without a certain session set
 	$router->call([
 		'SearchController' => [],
 		'HomeController' => [ 'index' ],
 		'AccountController' => ['balance', 'index'],
- 	*	'ProfileController' => [ 'edit', 'index']
+ 		'ProfileController' => [ 'edit', 'index']
 	]);
 } else {
 	$router->call([
@@ -43,8 +49,8 @@ Note: The difference between a route that expects a parameter and one that doesn
 /user/ =>represents a route thta expects a parameter/variable in the request url, such as /user/1
 /user => represents the /user route and expects no parameteror variable
 
-The average speed of the Route library is 0.04 for up to 60 routes secs per request.
 In order to make the routes recompile and show newly added route(s), delete the already compiled route7.cache.php file from the directory you provided to the Route library, as well as all the files in the /tmp sub-directory.
+
 
 The usage of the Route Class of this library looks something like this:
 ```php
@@ -54,15 +60,17 @@ require __DIR__.'/vendor/autoload.php';
 //This accepts the namespace for the controllers that would be used. and the cache directory for the compiled routes
 //both parameters are required
 
-$router = new Route('app\Controllers', __DIR__.'/cache');
+$router = new Route('App\Controllers', __DIR__.'/cache');
 
-//Please note that the router does not currently support any closure instance, use standard functions
-//i haven't found a way to cache closures and maintain their 'eval-ability' without suffering a high lag in performance.
+$router->get('/', function(){
+	echo 'The api is ready';
+});
+
 function show(){
 	echo 'The version is 1';
 }
 
-$router->get('/', 'show');
+$router->get('/version', 'show');
 
 $router->get('/login', [ AuthController::class, "login" ]);
 $router->post('/login', [ AuthController::class, "login" ]);
@@ -77,11 +85,19 @@ $router->group(['prefix' => '/api'], function($router){
 	$router->post('/user', [ UserController::class, 'index' ]);
 	$router->get('/users', [ UserController::class, 'index' ]);
 	$router->put('/user/', [ UserController::class, 'update' ]);
-	$router->delete('/user/', [ UserController::class, 'delete' ]);
-	$router->post('/user/add', [ UserController::class, 'add' ]);
 
 });
+$router->group(['prefix' => '/restricted', 
+				'name' => 'auth',
+				'middleware' => [ AuthController::class, "index"] //the midleware should expect a closure $next param
+		], function($router){
+	$router->get('/search', [ UserController::class, 'index' ]);
+	$router->get('/search/', [ UserController::class, 'index' ]);
+	$router->post('/user', [ UserController::class, 'index' ]);
+	$router->get('/users', [ UserController::class, 'index' ]);
+	$router->delete('/user/', [ UserController::class, 'delete' ]);
+	$router->post('/user/add', [ UserController::class, 'add' ]);
+});
 
-$router->run(); //this is where the router actually starts routes request
-
+$router->run(); //this is where the router actually decides which response to be returned
 ```
