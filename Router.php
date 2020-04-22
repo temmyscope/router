@@ -94,7 +94,7 @@ class Router{
 	}
 
 	public static function getRedirect(){
-		@$route = $_SESSION['redirect'];
+		@$route = $_SESSION['redirect'] ?? '';
 		unset($_SESSION['redirect']);
 		return self::redirect($route);
 	}
