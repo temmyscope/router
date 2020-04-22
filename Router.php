@@ -83,4 +83,20 @@ class Router{
 		}
 		return $controller;
 	}
+
+	public static function redirect($base_url, $location){
+		$location = $base_url."/{$location}";
+		if(!headers_sent()){ header("location: $location"); exit();
+		}else{
+			echo "<script type='text/javascript'> window.location.href= '{$location}';</script>";
+			echo '<noscript> <meta http-equiv="refresh" content="0;url='.$location.'"/></noscript>'; exit();
+		}
+	}
+
+	public static function getRedirect(){
+		@$route = $_SESSION['redirect'];
+		unset($_SESSION['redirect']);
+		return self::redirect($route);
+	}
+
 }
