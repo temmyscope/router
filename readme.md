@@ -10,7 +10,7 @@ previously defined controller & endpoint.
 E.g.
  url => /user/edit
 
- Processed into	=> UserController::class, 'edit' method
+ is Processed into	=> UserController::class, 'edit' method
 
 The usage of Router Class of this library looks something like this:
 
@@ -60,9 +60,9 @@ require __DIR__.'/vendor/autoload.php';
 //This accepts the namespace for the controllers that would be used. and the cache directory for the compiled routes
 //both parameters are required
 
-$router = new Route('App\Controllers', __DIR__.'/cache');
+$route = new Route('App\Controllers', __DIR__.'/cache');
 
-$router->get('/', function(){
+$route->get('/', function(){
 	echo 'The api is ready';
 });
 
@@ -70,34 +70,34 @@ function show(){
 	echo 'The version is 1';
 }
 
-$router->get('/version', 'show');
+$route->get('/version', 'show');
 
-$router->get('/login', [ AuthController::class, "login" ]);
-$router->post('/login', [ AuthController::class, "login" ]);
-$router->get('/login', [ AuthController::class, "login" ]);
-$router->post('/register', [ AuthController::class, "register" ] );
-$router->get('/home',  [ HomeController::class, 'index' ]);
+$route->get('/login', [ AuthController::class, "login" ]);
+$route->post('/login', [ AuthController::class, "login" ]);
+$route->get('/login', [ AuthController::class, "login" ]);
+$route->post('/register', [ AuthController::class, "register" ] );
+$route->get('/home',  [ HomeController::class, 'index' ]);
 
-$router->group(['prefix' => '/api'], function($router){
+$route->group(['prefix' => '/api'], function($route){
 
-	$router->get('/search', [ SearchController::class, 'index' ]);
-	$router->get('/search/', [ SearchController::class, 'index' ]);
-	$router->post('/user', [ UserController::class, 'index' ]);
-	$router->get('/users', [ UserController::class, 'index' ]);
-	$router->put('/user/', [ UserController::class, 'update' ]);
+	$route->get('/search', [ SearchController::class, 'index' ]);
+	$route->get('/search/', [ SearchController::class, 'index' ]);
+	$route->post('/user', [ UserController::class, 'index' ]);
+	$route->get('/users', [ UserController::class, 'index' ]);
+	$route->put('/user/', [ UserController::class, 'update' ]);
 
 });
-$router->group(['prefix' => '/restricted', 
+$route->group(['prefix' => '/restricted', 
 				'name' => 'auth',
 				'middleware' => [ AuthController::class, "index"] //the midleware should expect a closure $next param
-		], function($router){
-	$router->get('/search', [ UserController::class, 'index' ]);
-	$router->get('/search/', [ UserController::class, 'index' ]);
-	$router->post('/user', [ UserController::class, 'index' ]);
-	$router->get('/users', [ UserController::class, 'index' ]);
-	$router->delete('/user/', [ UserController::class, 'delete' ]);
-	$router->post('/user/add', [ UserController::class, 'add' ]);
+		], function($route){
+	$route->get('/search', [ UserController::class, 'index' ]);
+	$route->get('/search/', [ UserController::class, 'index' ]);
+	$route->post('/user', [ UserController::class, 'index' ]);
+	$route->get('/users', [ UserController::class, 'index' ]);
+	$route->delete('/user/', [ UserController::class, 'delete' ]);
+	$route->post('/user/add', [ UserController::class, 'add' ]);
 });
 
-$router->run(); //this is where the router actually decides which response to be returned
+$route->run(); //this is where the router actually decides which response to be returned
 ```
