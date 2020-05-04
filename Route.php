@@ -20,13 +20,12 @@ class Route
 	private $fallback = [];
 	private $prefix = "";
 	private $dir  = "";
-	private $inject = [ ]; // ['group_name' => [$var1, $var2]//array of objects or variable injected ]
+	private $inject = [ ];
 	private $middleware = [];
 	private $Process_middleware = ['default' => ""];
 
 	public function __construct($namespace = '')
 	{
-		//$this->url= ( isset($_SERVER['PATH_INFO'])) ? rtrim( , '/') : '/';
 		$this->namespace= $namespace;
 		$this->fallback[1] = function(){ echo "404: Resource Not Found."; };
 		$this->fallback[2] = function(){ echo "405: METHOD NOT ALLOWED."; };
@@ -84,8 +83,7 @@ class Route
 				return $this->diLoad( $call['middleware'], [ function() use ($route, $call){
 					return $route->diLoad( $call['call'], $call['param'] );
 				}]);
-			}
-			return $this->diLoad($call['call'], $call['param'] );
+			}return $this->diLoad($call['call'], $call['param'] );
 		}
 		if ( !isset($routes[$method]) ) {
 			return $this->diLoad( $this->fallback[2] );
@@ -123,8 +121,7 @@ class Route
 				$call['middleware'] = $value;
 				return $call;
 			}
-		}
-		return $call;
+		}return $call;
 	}
 
 	protected function processCallable($callable)

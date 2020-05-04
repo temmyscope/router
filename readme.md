@@ -14,10 +14,9 @@ The usage of the Router looks something like this:
 use Seven\Router\Route;
 
 require __DIR__.'/vendor/autoload.php';
-//This accepts the namespace for the controllers that would be used. and the cache directory for the compiled routes
-//both parameters are required
+//This accepts the namespace for the controllers that would be used.
 
-$route = new Route('App\Controllers'); //Route::init('App\Controllers', __DIR__.'/cache');
+$route = new Route('App\Controllers'); //Route::init('App\Controllers');
 
 $router->enableCache(__DIR__.'/cache'); //comment this line on a development server
 
@@ -49,6 +48,7 @@ $route->get('/home',  [ HomeController::class, 'index' ]);
 //note that when giving route groups name, 'default' is a reserved name in the library, so don't use it.
 $route->group(['prefix' => '/api/restricted', 
 				'name' => 'auth',
+				//objects or variables can be manually injected from v3.0.0 as an array like the one below:
 				'inject' => [$req, $res],
 				//the midleware should be fully namespaced middleware and must expect a closure $next param
 				'middleware' => [ App\Controllers\AuthController::class, "index"]
@@ -63,6 +63,7 @@ $route->group(['prefix' => '/api/restricted',
 
 //this is where the router actually decides which response to be returned
 $router->run($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
+//$router->run($_SERVER['REQUEST_METHOD'], $_SERVER['PATH_INFO'] ?? '/');
 ```
 
 Note: The difference between a route that expects a parameter and one that doesn't is the trailing slash in the route. E.g.
