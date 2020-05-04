@@ -4,7 +4,7 @@
     "type": "library",
     "version": "v3.0.0",
     "license": "MIT",
-    "minimum-stability": "dev-master",
+    "minimum-stability": "stable",
     "config": {
         "optimize-autoloader": true,
         "preferred-install": "dist",
