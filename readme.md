@@ -173,7 +173,7 @@ Route Class which does not accept parameters.
 # It is best when routes are defined in a different file
 	=> route definition are included/required/loaded into the current file
 
-	=> Note: routes can also be defined in the front controller;
+	=> Note: routes can also be defined in the front controller (i.e. in your index.php);
 
 ```php
 	require __DIR__.'/routes.php'; 
@@ -210,14 +210,14 @@ Route Class which does not accept parameters.
 # To make all requests to a certain endpoint return the same callable, use the "all" method
 ```php
 	$route->all('/posts', function($request, $response){
-		return $response->json("This handles all requests to /posts endpoint, regardless of request method");
+		return $response->send("This handles all requests to /posts endpoint, regardless of request method");
 	});
 ```
 
 # All params in uri are accessible through the request param object
 ```php
 	$route->put('/post/:key', function($request, $response){
-			return $response->json("This is a request containing key: ". $request->param->key )
+			return $response->send("This is a request containing key: ". $request->param->key )
 	});
 ```
 
@@ -240,7 +240,7 @@ Route Class which does not accept parameters.
 	});
 ```
 
-# There is a shorthand way to use the "use" method (Of-course it is negligibly slower, if you're performance-conscious)
+# There is a shorthand way to use the "use" method (Of-course it is negligibly slower, if you're performance-anxious)
 ```php
 	$route->use('cors,auth;prefix:api;', function() use ($route){
 		$route->get('/post/:id', function($request, $response){

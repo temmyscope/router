@@ -13,7 +13,7 @@ use \SplFileObject;
 use Seven\Vars\Strings;
 use Opis\Closure\SerializableClosure;
 use Psr\Http\Server\RequestHandlerInterface;
-use Psr\Http\Message\{ ServerRequestInterface, ResponseInterface };
+use Psr\Http\Message\{ RequestInterface, ServerRequestInterface, ResponseInterface };
 
 class Router implements RequestHandlerInterface
 {
@@ -97,16 +97,16 @@ class Router implements RequestHandlerInterface
     public function __call($method, $args)
     {
         if ($this->cache === false) {
-        	if( is_string($args[0]) ){
-        		[ $route, $routeArray, $action ] = $this->unpackRequest($args);
-            	[ $routeParams, $parametized ] = $this->parseRoute($routeArray);
-        	}else{
-        		foreach ($args[0] as $value) {
-        			$this->$method($value, $args[1]);
-        		}
-        		return;
-        	}
-
+                if( is_string($args[0]) ){
+                        [ $route, $routeArray, $action ] = $this->unpackRequest($args);
+                    [ $routeParams, $parametized ] = $this->parseRoute($routeArray);
+                }else{
+                        foreach ($args[0] as $value) {
+                            $this->$method($value, $args[1]);
+                        }
+                        return;
+                }
+                
             $method = strtolower($method);
             if (!$parametized) {
                 $this->routes['u'][$method][$route] = [
@@ -123,18 +123,18 @@ class Router implements RequestHandlerInterface
         }
     }
 
-    public function __invoke($request)
+    public function __invoke( $request, ResponseInterface $response)
     {
         if (empty($this->routeMiddlewares)) {
-            return $this->diLoad(
+            return $this->call(
                 $this->prepareCallable($this->callable),
-                [ $this->addParams($request, $this->params), $this->response ]
+                [ $this->addParams($request, $this->params), $response ]
             );
         } else {
             $middleware = array_shift($this->routeMiddlewares);
-            return $this->diLoad(
+            return $this->call(
                 $middleware,
-                [ $this->request, $this->response, $this->next ]
+                [ $request, $response, $this ]
             );
         }
     }
@@ -200,7 +200,7 @@ class Router implements RequestHandlerInterface
     */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->next($request);
+        return $this->next($request, $this->response);
     }
 
     public function load(string $routeDirectory)
@@ -299,7 +299,7 @@ class Router implements RequestHandlerInterface
     protected function process(string $method, string $uri, array $routeCollection)
     {
         if (@$route = $routesCollection['u'][$method][$uri] || 
-        	@$route = $routesCollection['u']['all'][$uri] ) {
+            @$route = $routesCollection['u']['all'][$uri] ) {
             $this->setRouteCallable($route['callable']);
             
             $this->setRouteMiddlewares($route['middlewares']);
