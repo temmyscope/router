@@ -13,7 +13,7 @@
     "autoload": {
         "classmap": {
             "Seven\\Router\\Route": "src/Route.php",
-            "Seven\\Router\\Router": "src/Router.php",
+            "Seven\\Router\\Router": "src/Router.php"
         },
         "files": [
             "Helpers.php"

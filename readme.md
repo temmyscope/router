@@ -280,7 +280,7 @@ Route Class which does not accept parameters.
 
 ```
 
-# Example use Case of PSR-7 Routes In a real Life Applicatiion
+# Example use Case of PSR-7 Request-Response Handlers In a real Life Applicatiion
 
 ```php
 use Seven\Router\Router;
