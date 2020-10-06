@@ -63,7 +63,6 @@ $route->registerProviders($request, $response);
 ```php
 #register middlewares E.g. for authentication, cors etc. using callables expecting the request, response, next
 $route->middleware('cors', function($request, $response, $next){
-	#do something with request or set headers for response
 	$headers = [
     'Access-Control-Allow-Origin'      => '*',
     'Access-Control-Allow-Methods'     => '*',
@@ -153,8 +152,7 @@ $route->put('/post/:key', function($request, $response){
 
 ```php
 #cors middleware is called first in this case.
-$route->use(['middleware' => ['cors', 'auth'],'prefix'=>'api' ], function() use ($route){}
-	//shorthand: $route->use('cors,auth;prefix:api;', function() use ($route){
+$route->use(['middleware' => ['cors', 'auth'],'prefix'=>'api' ], function() use ($route){
 	$route->get('/post/:id', function($request, $response){
 
 	});
