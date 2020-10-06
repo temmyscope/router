@@ -25,10 +25,10 @@ Route Class which does not accept parameters.
 
 # Initialize the class
 ```php
-	use \Seven\Router\Router;
+use \Seven\Router\Router;
 
-	#namespace: refers to the namespace from which the classes should be loaded
-	$route = new Router($namespace = 'App\Controllers');
+#namespace: refers to the namespace from which the classes should be loaded
+$route = new Router($namespace = 'App\Controllers');
 ```
 
 # Performance Optimization and Cache
