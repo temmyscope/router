@@ -7,13 +7,13 @@ namespace Seven\Router;
 * @package Seven Router Package
 */
 
-use \DI;
-use \Closure;
-use \SplFileObject;
+use DI;
+use Closure;
+use SplFileObject;
 use Seven\Vars\Strings;
 use Opis\Closure\SerializableClosure;
 use Psr\Http\Server\RequestHandlerInterface;
-use Psr\Http\Message\{ RequestInterface, ServerRequestInterface, ResponseInterface };
+use Psr\Http\Message\{ ServerRequestInterface, ResponseInterface };
 
 class Router implements RequestHandlerInterface
 {
@@ -36,9 +36,10 @@ class Router implements RequestHandlerInterface
 
     /**
     *
-    * @property null | SplFileObject $file
+    * @property null | string
     */
-    protected $file = null;
+
+    protected $fileAddress = null;
 
     /**
     * @property [] $middleware
@@ -70,14 +71,12 @@ class Router implements RequestHandlerInterface
     protected $routeMiddlewares = [];
 
     /**
-    * @property ServerRequestInterface $request
-    * PSR-7 request object
+    * @property object $request
     */
     protected $request;
 
     /**
-    * @property ResponseInterface $request
-    * PSR-7 response object
+    * @property object $request
     */
     protected $response;
 
@@ -85,7 +84,6 @@ class Router implements RequestHandlerInterface
     public function __construct(string $namespace)
     {
         $this->namespace = $namespace;
-        $this->next = Route::class;
     }
 
     /**
@@ -97,17 +95,17 @@ class Router implements RequestHandlerInterface
     public function __call($method, $args)
     {
         if ($this->cache === false) {
-                if( is_string($args[0]) ){
-                        [ $route, $routeArray, $action ] = $this->unpackRequest($args);
-                    [ $routeParams, $parametized ] = $this->parseRoute($routeArray);
-                }else{
-                        foreach ($args[0] as $value) {
-                            $this->$method($value, $args[1]);
-                        }
-                        return;
+            if (is_string($args[0])) {
+                [ $route, $routeArray, $action ] = $this->unpackRequest($args);
+                [ $routeParams, $parametized ] = $this->parseRoute($routeArray);
+            } else {
+                foreach ($args[0] as $value) {
+                    $this->$method($value, $args[1]);
                 }
+                return;
+            }
                 
-            $method = strtolower($method);
+            $method = strtoupper($method);
             if (!$parametized) {
                 $this->routes['u'][$method][$route] = [
                     'callable' => $this->serializeCallable($action), 'middlewares' => $this->middleware
@@ -123,27 +121,26 @@ class Router implements RequestHandlerInterface
         }
     }
 
-    public function __invoke( $request, ResponseInterface $response)
+    public function __invoke($request, $response)
     {
         if (empty($this->routeMiddlewares)) {
-            return $this->call(
-                $this->prepareCallable($this->callable),
-                [ $this->addParams($request, $this->params), $response ]
-            );
+                $callable = $this->prepareCallable($this->callable);
+                $request = $this->addParams($request, $this->params);
+                return ($callable instanceof SerializableClosure) ?
+                $callable($request, $response) : $this->call($callable, [$request, $response]);
         } else {
             $middleware = array_shift($this->routeMiddlewares);
             return $this->call(
-                $middleware,
-                [ $request, $response, $this ]
+                $middleware, [$request, $response, $this]
             );
         }
     }
 
-    private function addParams($request, array $key_value): RequestInterface
+    private function addParams($request, array $key_value)
     {
         $request->params = new \stdClass();
         foreach ($key_value as $key => $value) {
-                $request->params->$key = $value;
+            $request->params->$key = $value;
         }
         return $request;
     }
@@ -155,7 +152,7 @@ class Router implements RequestHandlerInterface
     *
     * @return mixed
     */
-    protected function call(callable $callable, $params = [])
+    protected function call(callable $callable, $params)
     {
         $builder = new DI\ContainerBuilder();
         $builder->enableCompilation(__DIR__ . '/../../../cache/tmp');
@@ -173,10 +170,8 @@ class Router implements RequestHandlerInterface
     */
     public function enableCache($directory): void
     {
-        $this->cache = @include $directory . '/cache/iroute7.cache.php' ?? false;
-        if ($this->cache === false) {
-            $this->file = new SplFileObject($directory . '/cache/iroute7.cache.php');
-        }
+        $this->fileAddress = $directory . '/iroute7.cache.php';
+        $this->cache = @include $this->fileAddress ?? false;
     }
 
     protected function findRouteMatch(string $uri, array $relatedRoutes): array
@@ -200,12 +195,7 @@ class Router implements RequestHandlerInterface
     */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->next($request, $this->response);
-    }
-
-    public function load(string $routeDirectory)
-    {
-        require $routeDirectory;
+        return $this($request, $this->response);
     }
     
     /**
@@ -296,29 +286,33 @@ class Router implements RequestHandlerInterface
     * @param array routeCollection
     *
     */
-    protected function process(string $method, string $uri, array $routeCollection)
-    {
-        if (@$route = $routesCollection['u'][$method][$uri] || 
-            @$route = $routesCollection['u']['all'][$uri] ) {
+    protected function process(string $method, string $uri, array $routesCollection)
+    {   
+        if (@$route = $routesCollection['u'][$method][$uri] ?? $routesCollection['u']['all'][$uri]) {
             $this->setRouteCallable($route['callable']);
-            
             $this->setRouteMiddlewares($route['middlewares']);
         } else {
             if (@$relatedRoutes = $routeCollection['p'][$method]) {
                 $match = $this->findRouteMatch($uri, $relatedRoutes);
                 if (empty($match)) {
-                    return $this->response->withStatus(404, "Resource does not exist.");
+                    header(sprintf('%s %s %s', $_SERVER['SERVER_PROTOCOL'], 404, "Not Found"), true, 404);
+                    http_response_code(404);
+                    echo"Resource not found."; 
+                    return;
                 }
                 $this->setRouteCallable($match['callable']);
                 $this->setRouteMiddlewares($match['middlewares']);
             } else {
-                return $this->response->withStatus(500, "Http Method does not exist.");
+                header(sprintf('%s %s %s', $_SERVER['SERVER_PROTOCOL'], 405, "Method Not Allowed"), true, 405);
+                http_response_code(405);
+                echo"Http Method not allowed.";
+                return;
             }
         }
-        return $this->next($this->request, $this->response);
+        return $this($this->request, $this->response);
     }
 
-    public function registerProviders(ServerRequestInterface $request, ResponseInterface $response)
+    public function registerProviders($request, $response)
     {
         $this->request = $request;
         $this->response = $response;
@@ -326,8 +320,9 @@ class Router implements RequestHandlerInterface
 
     public function retrieveCache($cache)
     {
-        if ($this->file !== null) {
-            $this->file->fwrite("<?php return " . var_export($cache, true));
+        if ($cache === false) {
+            $file = new SplFileObject($this->fileAddress, 'a');
+            $file->fwrite("<?php return " . var_export($cache, true) . ";");
         }
         return $cache;
     }
@@ -339,14 +334,12 @@ class Router implements RequestHandlerInterface
 
     public function run()
     {
-        $this->process(
-            strtolower($this->request->getMethod()),
-            strtolower($this->request->getUri()),
-            $this->routesCollection()
+        return $this->process(
+            $_SERVER['REQUEST_METHOD'], strtolower($_SERVER['PATH_INFO']), $this->routesCollection()
         );
     }
 
-    public function serializeCallable(callable $callable): string
+    public function serializeCallable($callable): string
     {
         if ($callable instanceof \Closure) {
             $callable = new SerializableClosure($callable);
@@ -391,7 +384,7 @@ class Router implements RequestHandlerInterface
         } else {
             $break = explode(';', $middles);
             $this->middleware = explode(',', $break[0]);
-            $this->prefix = str_replace('prefix:', $break[1]);
+            $this->prefix = str_replace('prefix:', '', $break[1] ?? "");
         }
         $next();
     }

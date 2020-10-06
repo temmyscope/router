@@ -118,11 +118,12 @@ Route Class which does not accept parameters.
 
 # Register PSR-7 Compliant/Implementing Request & Response Objects
 	
-	=> registering request & or response object that violates PSR-7 Interface would result in errors.
+	=> This is an optional feature; You don't have to register request & response objects
+
 ```php
 	/**
-	* @param ServerRequestInterface $request
-	* @param ResponseInterface $response
+	* @param $request
+	* @param $response
 	* 
 	* @return void
 	*/
@@ -130,13 +131,11 @@ Route Class which does not accept parameters.
 	$route->registerProviders($request, $response);
 ```
 
-
 # Register middlewares you want to use later in your route calls:: All Callables are acceptable
 
 ```php
 	#register middlewares E.g. for authentication, cors etc. using callables expecting the request, response, next
-	$route->middleware('cors', 
-		function(ServerRequestInterface $request, ResponseInterface $response, $next){
+	$route->middleware('cors', function($request, $response, $next){
 		#do something with request or set headers for response
 		$headers = [
       'Access-Control-Allow-Origin'      => '*',
@@ -160,9 +159,11 @@ Route Class which does not accept parameters.
 
 	=> This means the handle method is available as well as it can be invoked like a function.
 
+	=> Note: You can only use the "handle" method of the "next" object if you registered $request & $respnse objects 
+	that implement PSR-7 Interface; Else, just call next as a function|closure i.e. next(request, response)
+
 ```php
-	$route->middleware('auth', 
-		function(ServerRequestInterface $request, ResponseInterface $response, RequestHandlerInterface $next){
+	$route->middleware('auth', function($request, $response, RequestHandlerInterface $next){
 		#do something with request or set headers for response
 		
 		#if required conditions are met do:
@@ -178,9 +179,6 @@ Route Class which does not accept parameters.
 ```php
 	require __DIR__.'/routes.php'; 
 
-	//OR
-
-	$route->load(__DIR__.'/routes.php');
 ```
 
 # The routing process starts here
@@ -240,7 +238,10 @@ Route Class which does not accept parameters.
 	});
 ```
 
-# There is a shorthand way to use the "use" method (Of-course it is negligibly slower, if you're performance-anxious)
+# Shorthand for Use Keyword
+	
+	=> There is a shorthand way to use the "use" method (Of-course it is negligibly slower, if you're performance-anxious)
+
 ```php
 	$route->use('cors,auth;prefix:api;', function() use ($route){
 		$route->get('/post/:id', function($request, $response){
@@ -251,4 +252,169 @@ Route Class which does not accept parameters.
 		$route->post('/post', [ PostController::class, 'create' ]);
 
 	});
+```
+
+# .HTACCESS
+	
+	=> An example .htaccess file that fits perfectly for this router would look sth like this: 
+
+```htaccess
+
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    # Handle Authorization Header
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Handle Front Controller...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond $1 !^(cdn|robots.txt)
+    RewriteRule ^(.*)$ index.php/$1 [L]
+</IfModule>
+
+```
+
+# Example use Case of PSR-7 Routes In a real Life Applicatiion
+
+```php
+use Seven\Router\Router;
+use Nyholm\Psr7\Factory\Psr17Factory;
+use Symfony\Bridge\PsrHttpMessage\Factory\PsrHttpFactory;
+use Symfony\Component\HttpFoundation\{Request, Response};
+use App\Auth;
+
+
+//use GuzzleHttp\Psr7\{Request, Response};
+
+/*
+|---------------------------------------------------------------------------|
+| Register The Auto Loader 																									|
+|---------------------------------------------------------------------------|
+|
+*/
+require __DIR__.'/vendor/autoload.php';
+
+$psr17Factory = new Psr17Factory();
+$psrHttpFactory = new PsrHttpFactory($psr17Factory, $psr17Factory, $psr17Factory, $psr17Factory);
+
+$request = $psrHttpFactory->createRequest(Request::createFromGlobals());
+
+$response = $psrHttpFactory->createResponse(new Response());
+
+/**
+* @package  SevenPHP
+* @author   Elisha Temiloluwa <temmyscope@protonmail.com>
+|-------------------------------------------------------------------------------|
+|	SevenPHP by Elisha Temiloluwa a.k.a TemmyScope 																|
+|-------------------------------------------------------------------------------|
+*/
+
+$router = new Router('App\Controllers');
+
+//$router->enableCache(__DIR__.'/cache');
+
+$router->registerProviders($request, $response);
+
+$router->middleware('cors', function($request, $response, $next){
+		$headers = [
+	      'Access-Control-Allow-Origin'      => '*',
+	      'Access-Control-Allow-Methods'     => '*',
+	      'Access-Control-Allow-Credentials' => 'true',
+	      'Access-Control-Max-Age'           => '86400',
+	      'Access-Control-Allow-Headers'     => 'Content-Type, Authorization, X-Requested-With'
+	  ];
+	  if ($request->getMethod() === 'OPTIONS'){
+	      return $response->send('{"method":"OPTIONS"}', 200, $headers);
+	  }
+	  foreach($headers as $key => $value){
+	      $response->withHeader($key, $value);
+	  }
+		$next->handle($request);
+});
+
+$router->middleware('auth', function($request, $response, $next){
+		$token = $request->getHeader('Authorization');
+		if ( !$token || Auth::isValid($token) ) {
+				return $response->send('Unauthorized.', 401);
+		}
+		$request->userId = Auth::getValuesFromToken($token)->user_id;
+		$next->handle($request);
+});
+
+require __DIR__.'/routes/web.php';
+
+$router->run();
+```
+
+# Example use Case In a real Life Applicatiion
+
+```php
+use Seven\Router\Router;
+use Symfony\Component\HttpFoundation\{Request, Response};
+use App\Auth;
+
+
+//use GuzzleHttp\Psr7\{Request, Response};
+
+/*
+|---------------------------------------------------------------------------|
+| Register The Auto Loader 																									|
+|---------------------------------------------------------------------------|
+|
+*/
+require __DIR__.'/vendor/autoload.php';
+
+$request = Request::createFromGlobals();
+
+$response = new Response();
+
+/**
+* @package  SevenPHP
+* @author   Elisha Temiloluwa <temmyscope@protonmail.com>
+|-------------------------------------------------------------------------------|
+|	SevenPHP by Elisha Temiloluwa a.k.a TemmyScope 																|
+|-------------------------------------------------------------------------------|
+*/
+
+$router = new Router('App\Controllers');
+
+//$router->enableCache(__DIR__.'/cache');
+
+$router->registerProviders($request, $response);
+
+$router->middleware('cors', function($request, $response, $next){
+		$headers = [
+	      'Access-Control-Allow-Origin'      => '*',
+	      'Access-Control-Allow-Methods'     => '*',
+	      'Access-Control-Allow-Credentials' => 'true',
+	      'Access-Control-Max-Age'           => '86400',
+	      'Access-Control-Allow-Headers'     => 'Content-Type, Authorization, X-Requested-With'
+	  ];
+	  if ($request->isMethod('OPTIONS')){
+	      return $response->send('{"method":"OPTIONS"}', 200, $headers);
+	  }
+	  foreach($headers as $key => $value){
+	      $response->headers->set($key, $value);
+	  }
+		$next($request, $response);
+});
+
+$router->middleware('auth', function($request, $response, $next){
+		$token = $request->getHeader('Authorization');
+		if ( !$token || Auth::isValid($token) ) {
+				return $response->send('Unauthorized.', 401);
+		}
+		$request->userId = Auth::getValuesFromToken($token)->user_id;
+		$next->handle($request);
+});
+
+require __DIR__.'/routes/web.php';
+
+$router->run();
 ```
