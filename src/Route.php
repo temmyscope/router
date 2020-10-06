@@ -15,6 +15,7 @@ class Route
 {
     const NOT_FOUND = 1;
     const METHOD_NOT_ALLOWED = 2;
+    private $namespace;
     private $routes = [];
     private $cached = false;
     private $fallback = [];
@@ -98,7 +99,6 @@ class Route
 
     protected function diLoad($fn, $params = [])
     {
-
         $builder = new DI\ContainerBuilder();
         $builder->enableCompilation($this->dir . '/tmp');
         $builder->writeProxiesToFile(true, $this->dir . '/tmp/proxies');
