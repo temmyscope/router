@@ -93,7 +93,7 @@ class Router implements RequestHandlerInterface
     */
     public function __call($method, $args)
     {
-        if ( $this->cache === false ) {
+        if ($this->cache === false) {
             if (is_string($args[0])) {
                 [ $route, $routeArray, $action ] = $this->unpackRequest($args);
                 [ $parametized, $routeParams ] = $this->parseRoute($routeArray);
@@ -103,7 +103,6 @@ class Router implements RequestHandlerInterface
                 }
                 return;
             }
-
             $method = strtoupper($method);
             if (!$parametized) {
                 $this->routes['u'][$method][$route] = [
@@ -112,7 +111,7 @@ class Router implements RequestHandlerInterface
             } else {
                 $size = count($routeArray);
                 $startPosition = (empty($routeArray[0])) ? '/' : $routeArray[0];
-                $this->routes['p'][$method][$size][$startPosition] = [
+                $this->routes['p'][$method][$size][$startPosition][] = [
                     'callable' => $this->serializeCallable($action), 'middlewares' => $this->middleware,
                     'params' => $routeParams,  'route' => $routeArray
                 ];
@@ -130,7 +129,8 @@ class Router implements RequestHandlerInterface
         } else {
             $middleware = array_shift($this->routeMiddlewares);
             return $this->call(
-                $middleware, [$request, $response, $this]
+                $middleware,
+                [$request, $response, $this]
             );
         }
     }
@@ -177,15 +177,15 @@ class Router implements RequestHandlerInterface
     {
         [ $uriArray, $size ] = $this->preProcessUri($uri);
         $routes = $relatedRoutes[$size] ?? [];
-        if ($size === 1 && count($routes) === 1) {
-            foreach ($relatedRoutes[$size] as $key => $value) {
+        if (@$similarRoutes = $routes[$uriArray[0]]) {
+            foreach ($similarRoutes as $key => $value) {
                 if ($this->matchUriPatterns($value['params'], $uriArray, $value['route']) === true) {
                     return $value;
                 }
             }
         }
-        if (@$similarRoutes = $routes[$uriArray[0]]) {
-            foreach ($similarRoutes as $key => $value) {
+        if ($size === 1 && count($routes) === 1) {
+            foreach ($relatedRoutes[$size] as $key => $value) {
                 if ($this->matchUriPatterns($value['params'], $uriArray, $value['route']) === true) {
                     return $value;
                 }
@@ -219,7 +219,7 @@ class Router implements RequestHandlerInterface
         $params = [];
         foreach ($paramKeyValuePairs as $position => $value) {
             $params[$value] = $uriArray[(int)$position];
-            $uriArray[$position] = ':'.$value;
+            $uriArray[$position] = ':' . $value;
         }
         if ($uriArray === $routeArray) {
             $this->setParams($params);
@@ -294,7 +294,7 @@ class Router implements RequestHandlerInterface
     *
     */
     protected function process(string $method, string $uri, array $routesCollection)
-    {   
+    {
         if (@$route = $routesCollection['u'][$method][$uri] ?? $routesCollection['u']['ALL'][$uri]) {
             $this->setRouteCallable($route['callable']);
             $this->setRouteMiddlewares($route['middlewares']);
@@ -304,7 +304,7 @@ class Router implements RequestHandlerInterface
                 if (empty($match)) {
                     header(sprintf('%s %s %s', $_SERVER['SERVER_PROTOCOL'], 404, "Not Found"), true, 404);
                     http_response_code(404);
-                    echo"Resource not found."; 
+                    echo"Resource not found.";
                     return;
                 }
                 $this->setRouteCallable($match['callable']);
@@ -329,9 +329,9 @@ class Router implements RequestHandlerInterface
     {
         if ($this->fileAddress === null) {
             return $this->routes;
-        }else{
-            if ($this->cache === false){
-                return $this->saveCache($this->routes); 
+        } else {
+            if ($this->cache === false) {
+                return $this->saveCache($this->routes);
             }
             return $this->cache;
         }
@@ -341,13 +341,15 @@ class Router implements RequestHandlerInterface
     {
         $uri = (isset($_SERVER['PATH_INFO'])) ? ltrim(strtolower($_SERVER['PATH_INFO']), '/') : '/';
         return $this->process(
-            $_SERVER['REQUEST_METHOD'], $uri, $this->routesCollection()
+            $_SERVER['REQUEST_METHOD'],
+            $uri,
+            $this->routesCollection()
         );
     }
 
     public function saveCache($routes)
     {
-        file_put_contents($this->fileAddress, "<?php return ". var_export($routes, true) . ";");
+        file_put_contents($this->fileAddress, "<?php return " . var_export($routes, true) . ";");
         return $routes;
     }
 
@@ -355,7 +357,7 @@ class Router implements RequestHandlerInterface
     {
         if ($callable instanceof \Closure) {
             $callable = new SerializableClosure($callable);
-        }elseif (is_array($callable)) {
+        } elseif (is_array($callable)) {
             $callable = [ $this->namespace . '\\' . $callable[0], $callable[1] ];
         }
         return serialize($callable);
@@ -390,7 +392,7 @@ class Router implements RequestHandlerInterface
 
     public function use($middles, \Closure $next)
     {
-        if ( $this->cache === false) {
+        if ($this->cache === false) {
             if (is_array($middles)) {
                 $this->prefix = $middles['prefix'];
                 foreach ($middles['middleware'] as $key => $value) {
@@ -406,6 +408,5 @@ class Router implements RequestHandlerInterface
             }
             $next();
         }
-        
     }
 }
