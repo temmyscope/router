@@ -9,7 +9,6 @@ namespace Seven\Router;
 
 use DI;
 use Closure;
-use SplFileObject;
 use Seven\Vars\Strings;
 use Opis\Closure\SerializableClosure;
 use Psr\Http\Server\RequestHandlerInterface;
@@ -94,17 +93,17 @@ class Router implements RequestHandlerInterface
     */
     public function __call($method, $args)
     {
-        if ($this->cache === false) {
+        if ( $this->cache === false ) {
             if (is_string($args[0])) {
                 [ $route, $routeArray, $action ] = $this->unpackRequest($args);
-                [ $routeParams, $parametized ] = $this->parseRoute($routeArray);
+                [ $parametized, $routeParams ] = $this->parseRoute($routeArray);
             } else {
                 foreach ($args[0] as $value) {
                     $this->$method($value, $args[1]);
                 }
                 return;
             }
-                
+
             $method = strtoupper($method);
             if (!$parametized) {
                 $this->routes['u'][$method][$route] = [
@@ -131,8 +130,7 @@ class Router implements RequestHandlerInterface
         } else {
             $middleware = array_shift($this->routeMiddlewares);
             return $this->call(
-                $middleware,
-                [$request, $response, $this]
+                $middleware, [$request, $response, $this]
             );
         }
     }
@@ -171,14 +169,22 @@ class Router implements RequestHandlerInterface
     */
     public function enableCache($directory): void
     {
-        $this->fileAddress = $directory . '/iroute7.cache.php';
-        $this->cache = @include $this->fileAddress ?? false;
+        $this->fileAddress = rtrim($directory, DIRECTORY_SEPARATOR) . '/iroute7.cache.php';
+        @$this->cache = include $this->fileAddress;
     }
 
     protected function findRouteMatch(string $uri, array $relatedRoutes): array
     {
         [ $uriArray, $size ] = $this->preProcessUri($uri);
-        if (@$similarRoutes = $relatedRoutes[$size][$uriArray[0]]) {
+        $routes = $relatedRoutes[$size] ?? [];
+        if ($size === 1 && count($routes) === 1) {
+            foreach ($relatedRoutes[$size] as $key => $value) {
+                if ($this->matchUriPatterns($value['params'], $uriArray, $value['route']) === true) {
+                    return $value;
+                }
+            }
+        }
+        if (@$similarRoutes = $routes[$uriArray[0]]) {
             foreach ($similarRoutes as $key => $value) {
                 if ($this->matchUriPatterns($value['params'], $uriArray, $value['route']) === true) {
                     return $value;
@@ -213,7 +219,7 @@ class Router implements RequestHandlerInterface
         $params = [];
         foreach ($paramKeyValuePairs as $position => $value) {
             $params[$value] = $uriArray[(int)$position];
-            $uriArray[$position] = $value;
+            $uriArray[$position] = ':'.$value;
         }
         if ($uriArray === $routeArray) {
             $this->setParams($params);
@@ -288,17 +294,17 @@ class Router implements RequestHandlerInterface
     *
     */
     protected function process(string $method, string $uri, array $routesCollection)
-    {
-        if (@$route = $routesCollection['u'][$method][$uri] ?? $routesCollection['u']['all'][$uri]) {
+    {   
+        if (@$route = $routesCollection['u'][$method][$uri] ?? $routesCollection['u']['ALL'][$uri]) {
             $this->setRouteCallable($route['callable']);
             $this->setRouteMiddlewares($route['middlewares']);
         } else {
-            if (@$relatedRoutes = $routeCollection['p'][$method]) {
+            if (@$relatedRoutes = $routesCollection['p'][$method]) {
                 $match = $this->findRouteMatch($uri, $relatedRoutes);
                 if (empty($match)) {
                     header(sprintf('%s %s %s', $_SERVER['SERVER_PROTOCOL'], 404, "Not Found"), true, 404);
                     http_response_code(404);
-                    echo"Resource not found.";
+                    echo"Resource not found."; 
                     return;
                 }
                 $this->setRouteCallable($match['callable']);
@@ -319,35 +325,37 @@ class Router implements RequestHandlerInterface
         $this->response = $response;
     }
 
-    public function retrieveCache($cache)
-    {
-        if ($cache === false) {
-            $file = new SplFileObject($this->fileAddress, 'a');
-            $file->fwrite("<?php return " . var_export($cache, true) . ";");
-        }
-        return $cache;
-    }
-
     protected function routesCollection(): array
     {
-        return ($this->cache === false) ? $this->routes : $this->retrieveCache($this->cache);
+        if ($this->fileAddress === null) {
+            return $this->routes;
+        }else{
+            if ($this->cache === false){
+                return $this->saveCache($this->routes); 
+            }
+            return $this->cache;
+        }
     }
 
     public function run()
     {
+        $uri = (isset($_SERVER['PATH_INFO'])) ? ltrim(strtolower($_SERVER['PATH_INFO']), '/') : '/';
         return $this->process(
-            $_SERVER['REQUEST_METHOD'],
-            strtolower($_SERVER['PATH_INFO'] ?? "/"),
-            $this->routesCollection()
+            $_SERVER['REQUEST_METHOD'], $uri, $this->routesCollection()
         );
+    }
+
+    public function saveCache($routes)
+    {
+        file_put_contents($this->fileAddress, "<?php return ". var_export($routes, true) . ";");
+        return $routes;
     }
 
     public function serializeCallable($callable): string
     {
         if ($callable instanceof \Closure) {
             $callable = new SerializableClosure($callable);
-        }
-        if (is_array($callable)) {
+        }elseif (is_array($callable)) {
             $callable = [ $this->namespace . '\\' . $callable[0], $callable[1] ];
         }
         return serialize($callable);
@@ -376,19 +384,28 @@ class Router implements RequestHandlerInterface
 
     protected function unpackRequest($args): array
     {
-        return [strtolower($args[0]), explode('/', $args[0]), $args[1] ];
+        $uri = ltrim($args[0], '/');
+        return [strtolower($uri), explode('/', $uri), $args[1] ];
     }
 
     public function use($middles, \Closure $next)
     {
-        if (is_array($middles)) {
-            $this->prefix = $middles['prefix'];
-            $this->middleware = $middles['middleware'];
-        } else {
-            $break = explode(';', $middles);
-            $this->middleware = explode(',', $break[0]);
-            $this->prefix = str_replace('prefix:', '', $break[1] ?? "");
+        if ( $this->cache === false) {
+            if (is_array($middles)) {
+                $this->prefix = $middles['prefix'];
+                foreach ($middles['middleware'] as $key => $value) {
+                    $this->middleware[] = $value;
+                }
+            } else {
+                $break = explode(';', $middles);
+                $middlewares = explode(',', $break[0]);
+                foreach ($middlewares as $key => $value) {
+                    $this->middleware[] = $value;
+                }
+                $this->prefix = str_replace('prefix:', '', $break[1] ?? "");
+            }
+            $next();
         }
-        $next();
+        
     }
 }
