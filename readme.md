@@ -61,7 +61,8 @@ $route->registerProviders($request, $response);
 #### Register middlewares you want to use later in your route calls:: All Callables are acceptable
 
 ```php
-#register middlewares E.g. for authentication, cors etc. using callables expecting the request, response, next
+#register middlewares 
+#E.g. for authentication, cors etc. using callables expecting the request, response, next
 $route->middleware('cors', function($request, $response, $next){
  $headers = [
   'Access-Control-Allow-Origin'      => '*',
@@ -132,14 +133,14 @@ $route->get('/post/:id/creator/:name', function($request, $response){
 
 ```php
 $route->all('/posts', function($request, $response){
-	return $response->send("This handles all requests to /posts endpoint, regardless of request method");
+ return $response->send("This handles all requests to /posts endpoint, regardless of request method");
 });
 ```
 
 #### All params in uri are accessible through the request param object
 ```php
 $route->put('/post/:key', function($request, $response){
-		return $response->send("This is a request containing key: ". $request->param->key )
+ return $response->send("This is a request containing key: ". $request->param->key )
 });
 ```
 
@@ -151,12 +152,12 @@ $route->put('/post/:key', function($request, $response){
 ```php
 #cors middleware is called first in this case.
 $route->use(['middleware' => ['cors', 'auth'],'prefix'=>'api' ], function() use ($route){
-	$route->get('/post/:id', function($request, $response){
+ $route->get('/post/:id', function($request, $response){
+ 
+ });
 
-	});
-	
-	# request & response objects are passed as arguments automagically
-	$route->post('/post', [ PostController::class, 'create' ]);
+ # request & response objects are passed as arguments automagically
+ $route->post('/post', [ PostController::class, 'create' ]);
 
 });
 ```
@@ -272,7 +273,10 @@ require __DIR__.'/routes/web.php';
 $router->run();
 ```
 
-#### Example use Case of PSR-7 Request-Response Handlers In an Applicatiion making use Symfony/http-foundation
+#### Example use Case of PSR-7 Request-Response Handlers In an Applicatiion making use of Symfony/http-foundation
+
+***Note: Not all use of PSR-7 compliants Request & Response handlers are this stressful.<br> 
+This example is given as it might be the most complicated scenario use case.***
 
 ```php
 use Seven\Router\Router;
@@ -365,50 +369,48 @@ $route = new Route('App\Controllers'); //Route::init('App\Controllers');
 
 $route->enableCache(__DIR__.'/cache'); //comment this line on a development server
 
-//If the two fallbacks are not set, the router handles both automatically
-$route->setFallback(function(){
-	return print_r(['error' => 404]);
-}, Route::NOT_FOUND);
-
-$route->setFallback(function(){
-	return print_r(['error' => 405]);
-}, Route::METHOD_NOT_ALLOWED);
-
+//If fallbacks are not set, the router handles them automatically
+$route->setFallbacks([
+ 404 => fn() => response()->send("error 404", 404),
+ 405 => fn() => response()->send("error 405", 405),
+]);
 
 $route->get('/', function(){
-	echo 'The api is ready';
+ echo 'The api version 1 is ready';
 });
 
-function show(){
-	echo 'The version is 1';
-}
-$route->get('/version', 'show');
+$route->get('/login', [ AuthController::class, "login" ]);
+
+$route->post('/login', [ AuthController::class, "login" ]);
 
 $route->get('/login', [ AuthController::class, "login" ]);
-$route->post('/login', [ AuthController::class, "login" ]);
-$route->get('/login', [ AuthController::class, "login" ]);
+
 $route->post('/register', [ AuthController::class, "register" ] );
+
 $route->get('/home',  [ HomeController::class, 'index' ]);
 
 
-//note that when giving route groups name, 'default' is a reserved name in the library, so don't use it.
-$route->group(['prefix' => '/api/restricted', 
-				'name' => 'auth',
-				//objects or variables can be manually injected from v3.0.0 as an array like the one below:
-				'inject' => [$req, $res],
-				//the midleware should be fully namespaced middleware and must expect a closure $next param
-				'middleware' => [ App\Controllers\AuthController::class, "index"]
-		], function($route){
-	$route->get('/user', [ UserController::class, 'index' ]);
-	$route->get('/search/', [ UserController::class, 'index' ]);
-	$route->post('/user', [ UserController::class, 'index' ]);
-	$route->get('/users', [ UserController::class, 'index' ]);
-	$route->delete('/user/', [ UserController::class, 'delete' ]);
-	$route->post('/user/add', [ UserController::class, 'add' ]);
+//note that when giving route groups name, 
+#'default' is a reserved name in the library, so don't use it.
+$route->group([
+		'prefix' => '/api/restricted', 
+		'name' => 'auth',
+		'inject' => [$req, $res],
+		'middleware' => [ App\Controllers\AuthController::class, "index"]
+	], function($route){
+
+ $route->get('/user', [ UserController::class, 'index' ]);
+ $route->get('/search/', [ UserController::class, 'index' ]);
+ $route->post('/user', [ UserController::class, 'index' ]);
+ $route->get('/users', [ UserController::class, 'index' ]);
+ $route->delete('/user/', [ UserController::class, 'delete' ]);
+ $route->post('/user/add', [ UserController::class, 'add' ]);
+
 });
 
-//this is where the router actually decides which response to be returned
-$router->run($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
-//$router->run($_SERVER['REQUEST_METHOD'], $_SERVER['PATH_INFO'] ?? '/');
+$router->run(
+ $_SERVER['REQUEST_METHOD'], 
+ $_SERVER['REQUEST_URI'] ?? $_SERVER['PATH_INFO'] ?? '/'
+);
 ```
 
