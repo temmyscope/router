@@ -7,9 +7,9 @@ namespace Seven\Router;
 * @package Seven Router Package
 */
 
-use Opis\Closure\SerializableClosure;
 use DI;
 use Closure;
+use Opis\Closure\SerializableClosure;
 
 class Route
 {

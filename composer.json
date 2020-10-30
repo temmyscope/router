@@ -11,12 +11,11 @@
         "sort-packages": true
     },
     "autoload": {
-        "classmap": {
-            "Seven\\Router\\Route": "src/Route.php",
-            "Seven\\Router\\Router": "src/Router.php"
+        "psr-4": {
+            "Seven\\Router\\": "src/"
         },
         "files": [
-            "Helpers.php"
+            "src/Helpers.php"
         ]
     },
     "require": {
@@ -25,6 +24,10 @@
         "psr/http-server-handler": "^1.0",
         "php-di/php-di": "6.0.11",
         "opis/closure": "3.5.1"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.4.2",
+        "symfony/http-foundation": "^5.2"
     },
     "authors": [
         {

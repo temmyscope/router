@@ -1,4 +1,5 @@
 <?php
+namespace Seven\Router;
 
 if (!function_exists('redirect')) {
     function redirect($base_url, $location = '')

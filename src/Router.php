@@ -9,7 +9,7 @@ namespace Seven\Router;
 
 use DI;
 use Closure;
-use Seven\Vars\Strings;
+use Seven\Router\str_contains;
 use Opis\Closure\SerializableClosure;
 use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Http\Message\{ ServerRequestInterface, ResponseInterface };
@@ -43,7 +43,12 @@ class Router implements RequestHandlerInterface
     /**
     * @property [] $middleware
     */
-    private $middleware = [];
+    protected $middleware = [];
+
+    /**
+    * @property string $namespace
+    */
+    protected $namespace = "";
 
     /**
     * @property [] params
