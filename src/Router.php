@@ -128,7 +128,9 @@ class Router implements RequestHandlerInterface
     {
         if (empty($this->routeMiddlewares)) {
                 $callable = $this->prepareCallable($this->callable);
-                $request = $this->addParams($request, $this->params);
+                if (!empty($this->params)) {
+                    $request = $this->addParams($request, $this->params);
+                }
                 return ($callable instanceof SerializableClosure) ?
                 $callable($request, $response) : $this->call($callable, [$request, $response]);
         } else {
@@ -142,6 +144,7 @@ class Router implements RequestHandlerInterface
 
     private function addParams($request, array $key_value)
     {
+        $request = (is_object($request)) ? $request : new \stdClass();
         $request->params = new \stdClass();
         foreach ($key_value as $key => $value) {
             $request->params->$key = $value;
@@ -317,7 +320,7 @@ class Router implements RequestHandlerInterface
             } else {
                 header(sprintf('%s %s %s', $_SERVER['SERVER_PROTOCOL'], 405, "Method Not Allowed"), true, 405);
                 http_response_code(405);
-                echo"Http Method not allowed.";
+                echo"Http Method not allowed For requested resource.";
                 return;
             }
         }
@@ -344,7 +347,9 @@ class Router implements RequestHandlerInterface
 
     public function run()
     {
-        $uri = (isset($_SERVER['PATH_INFO'])) ? ltrim(strtolower($_SERVER['PATH_INFO']), '/') : '/';
+        $requestUri = (empty($_SERVER['PATH_INFO'])) ? strtok($_SERVER["REQUEST_URI"], '?') : $_SERVER['PATH_INFO'];
+        $uri = (empty($requestUri)) ? '/' : strtolower(ltrim($requestUri, '/'));
+
         return $this->process(
             $_SERVER['REQUEST_METHOD'],
             $uri,
