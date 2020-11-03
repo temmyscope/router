@@ -16,18 +16,21 @@ if (!function_exists('redirect')) {
     }
 }
 
-if (!function_exists('str_contains')) {
-    function str_contains(string $str, $contain, bool $ignoreCase = false): bool
+if ( !function_exists('str_endswith') ) {
+    function str_endswith(string $value, string $end): bool
     {
-        if ($ignoreCase) {
-            $str = mb_strtolower($str);
+        if (substr($value, -strlen($end)) == $end) {
+            return true;
         }
-        $contain = is_array($contain) ? $contain : [$contain];
-        foreach ($contain as $val) {
-            $val = ($ignoreCase) ? mb_strtolower($val) : $val;
-            if (mb_strpos($str, $val) !== false) {
-                return true;
-            }
+        return false;
+    }
+}
+
+if (!function_exists('str_contains')) {
+    function str_contains(string $str, string $contain): bool
+    {
+        if (strpos($str, $contain) !== false) {
+            return true;
         }
         return false;
     }

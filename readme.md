@@ -4,7 +4,7 @@
 
 	=> The Library uses the PHP-DI dependency container to inject dependencies.
 
-	=> The Library's Router Class has been completely unit tested and is ready for use.
+	=> The Library has been completely unit tested and is ready for use.
 
 ### Installation
 ```bash
@@ -15,13 +15,7 @@ composer require sevens/router
 	
 	=> Use preloader to preload the cached route file after compilation on a production server.
 
-### Seven\Router\Router
-
-***The more conventional Router Library has been added to the Seven\Router Library. 
-Although quite faster than most Router libraries, the Router Class handles request 
-slower than the Route Class which does not accept parameters.***
-
-### The usage of the Router\Router is explained below.
+### Seven\Router\Router: Usage
 
 
 #### Initialize the class
@@ -174,6 +168,11 @@ $route->use('cors,auth;prefix:api;', function() use ($route){
 	
  # request & response objects are passed as arguments automagically
  $route->post('/post', [ PostController::class, 'create' ]);
+
+});
+
+#start with a ';' if no middleware is being used
+$route->use(';prefix:api/test;', function() use ($route){
 
 });
 ```
@@ -340,77 +339,10 @@ $router->middleware('auth', function($request, $response, $next){
 
 require __DIR__.'/routes/web.php';
 
-$router->run();
-```
-
-## Seven\Router\Route
-
-	=> The Route Class is an extremely lightweight and simple fast router
-
-In order to make the routes recompile and show newly added route(s), 
-delete the already compiled route7.cache.php file from the directory 
-you provided to the Route library, as well as all the files in the /tmp sub-directory.
-
-Note: The difference between a route that expects a parameter and one 
-that doesn't is the trailing slash in the route. 
-E.g.:
-/user/ =>represents a route thta expects a parameter/variable in the request url, such as /user/1
-/user => represents the /user route and expects no parameteror variable
-
-# The usage of the Router\Route looks something like this:
-
-```php
-use Seven\Router\Route;
-
-require __DIR__.'/vendor/autoload.php';
-//This accepts the namespace for the controllers that would be used.
-
-$route = new Route('App\Controllers'); //Route::init('App\Controllers');
-
-$route->enableCache(__DIR__.'/cache'); //comment this line on a development server
-
-//If fallbacks are not set, the router handles them automatically
-$route->setFallbacks([
- 404 => fn() => response()->send("error 404", 404),
- 405 => fn() => response()->send("error 405", 405),
-]);
-
-$route->get('/', function(){
- echo 'The api version 1 is ready';
-});
-
-$route->get('/login', [ AuthController::class, "login" ]);
-
-$route->post('/login', [ AuthController::class, "login" ]);
-
-$route->get('/login', [ AuthController::class, "login" ]);
-
-$route->post('/register', [ AuthController::class, "register" ] );
-
-$route->get('/home',  [ HomeController::class, 'index' ]);
-
-
-//note that when giving route groups name, 
-#'default' is a reserved name in the library, so don't use it.
-$route->group([
-		'prefix' => '/api/restricted', 
-		'name' => 'auth',
-		'inject' => [$req, $res],
-		'middleware' => [ App\Controllers\AuthController::class, "index"]
-	], function($route){
-
- $route->get('/user', [ UserController::class, 'index' ]);
- $route->get('/search/', [ UserController::class, 'index' ]);
- $route->post('/user', [ UserController::class, 'index' ]);
- $route->get('/users', [ UserController::class, 'index' ]);
- $route->delete('/user/', [ UserController::class, 'delete' ]);
- $route->post('/user/add', [ UserController::class, 'add' ]);
-
-});
-
-$router->run(
+$router->run( 
  $_SERVER['REQUEST_METHOD'], 
  $_SERVER['REQUEST_URI'] ?? $_SERVER['PATH_INFO'] ?? '/'
 );
 ```
 
+***Note: Routes without parameters are accessed faster that those that accept parameters***

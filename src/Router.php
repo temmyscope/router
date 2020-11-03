@@ -66,7 +66,7 @@ class Router implements RequestHandlerInterface
     * @property [] routes
     * all the processed routes
     */
-    protected $routes = [];
+    public $routes = [];
 
     /**
     * @property callable[]
@@ -110,7 +110,7 @@ class Router implements RequestHandlerInterface
             }
             $method = strtoupper($method);
             if (!$parametized) {
-                $this->routes['u'][$method][$route] = [
+                $this->routes['u'][$method][rtrim($route, '/')] = [
                     'callable' => $this->serializeCallable($action), 'middlewares' => $this->middleware
                 ];
             } else {
@@ -183,21 +183,22 @@ class Router implements RequestHandlerInterface
 
     protected function findRouteMatch(string $uri, array $relatedRoutes): array
     {
-        [ $uriArray, $size ] = $this->preProcessUri($uri);
-        $routes = $relatedRoutes[$size] ?? [];
-        if (@$similarRoutes = $routes[$uriArray[0]]) {
-            foreach ($similarRoutes as $key => $value) {
-                if ($this->matchUriPatterns($value['params'], $uriArray, $value['route']) === true) {
-                    return $value;
+        [ $uriArray, $uriSize ] = $this->preProcessUri($uri);
+        $routes = $relatedRoutes[$uriSize] ?? [];
+        $routeSize = count($routes);
+        if ($routeSize > 0) {
+            if ($uriSize === 1 && $routeSize === 1) {
+                if ($this->matchUriPatterns($routes[0]['params'], $uriArray, $routes[0]['route']) === true) 
+                    return $routes[0];
+            }
+            if (@$similarRoutes = $routes[$uriArray[0]]) {
+                foreach ($similarRoutes as $key => $value) {
+                    if ($this->matchUriPatterns($value['params'], $uriArray, $value['route']) === true) {
+                        return $value;
+                    }
                 }
             }
-        }
-        if ($size === 1 && count($routes) === 1) {
-            foreach ($relatedRoutes[$size] as $key => $value) {
-                if ($this->matchUriPatterns($value['params'], $uriArray, $value['route']) === true) {
-                    return $value;
-                }
-            }
+            
         }
         return [];
     }
@@ -298,7 +299,7 @@ class Router implements RequestHandlerInterface
     *
     * @param string $method
     * @param string $uri
-    * @param array routeCollection
+    * @param array routesCollection
     *
     */
     protected function process(string $method, string $uri, array $routesCollection)
@@ -310,7 +311,11 @@ class Router implements RequestHandlerInterface
             if (@$relatedRoutes = $routesCollection['p'][$method]) {
                 $match = $this->findRouteMatch($uri, $relatedRoutes);
                 if (empty($match)) {
-                    header(sprintf('%s %s %s', $_SERVER['SERVER_PROTOCOL'], 404, "Not Found"), true, 404);
+                    header(
+                        sprintf('%s %s %s', $_SERVER['SERVER_PROTOCOL'] ?? "HTTP/1.1", 404, "Not Found"),
+                        true,
+                        404
+                    );
                     http_response_code(404);
                     echo"Resource not found.";
                     return;
@@ -318,7 +323,11 @@ class Router implements RequestHandlerInterface
                 $this->setRouteCallable($match['callable']);
                 $this->setRouteMiddlewares($match['middlewares']);
             } else {
-                header(sprintf('%s %s %s', $_SERVER['SERVER_PROTOCOL'], 405, "Method Not Allowed"), true, 405);
+                header(
+                    sprintf('%s %s %s', $_SERVER['SERVER_PROTOCOL'] ?? "HTTP/1.1", 405, "Method Not Allowed"), 
+                    true,
+                    405
+                );
                 http_response_code(405);
                 echo"Http Method not allowed For requested resource.";
                 return;
@@ -345,15 +354,13 @@ class Router implements RequestHandlerInterface
         }
     }
 
-    public function run()
+    public function run(string $method, string $uri)
     {
-        $requestUri = (empty($_SERVER['PATH_INFO'])) ? strtok($_SERVER["REQUEST_URI"], '?') : $_SERVER['PATH_INFO'];
-        $uri = (empty($requestUri)) ? '/' : strtolower(ltrim($requestUri, '/'));
+        $uri = strtok($uri, '?');
+        $uri = strtolower(trim($uri, '/'));
 
         return $this->process(
-            $_SERVER['REQUEST_METHOD'],
-            $uri,
-            $this->routesCollection()
+            $method, $uri, $this->routesCollection()
         );
     }
 
@@ -368,7 +375,7 @@ class Router implements RequestHandlerInterface
         if ($callable instanceof \Closure) {
             $callable = new SerializableClosure($callable);
         } elseif (is_array($callable)) {
-            $callable = [ $this->namespace . '\\' . $callable[0], $callable[1] ];
+            $callable[0] = $this->namespace . '\\' . $callable[0];
         }
         return serialize($callable);
     }
@@ -396,27 +403,34 @@ class Router implements RequestHandlerInterface
 
     protected function unpackRequest($args): array
     {
-        $uri = ltrim($args[0], '/');
-        return [strtolower($uri), explode('/', $uri), $args[1] ];
+        $uri = $this->prefix . ltrim($args[0], '/');
+        return [ strtolower($uri), explode('/', $uri), $args[1] ];
     }
 
     public function use($middles, \Closure $next)
     {
         if ($this->cache === false) {
             if (is_array($middles)) {
-                $this->prefix = $middles['prefix'];
+                $this->prefix = (
+                    isset($middles['prefix']) && !empty($middles['prefix'])
+                ) ? $middles['prefix'].'/' : "";
+
                 foreach ($middles['middleware'] as $key => $value) {
                     $this->middleware[] = $value;
                 }
             } else {
                 $break = explode(';', $middles);
-                $middlewares = explode(',', $break[0]);
-                foreach ($middlewares as $key => $value) {
-                    $this->middleware[] = $value;
+                if (!empty($break[0])) {
+                    $middlewares = explode(',', $break[0]);
+                    foreach ($middlewares as $key => $value) {
+                        $this->middleware[] = $value;
+                    }
                 }
-                $this->prefix = str_replace('prefix:', '', $break[1] ?? "");
+                $prefix = str_replace('prefix:', '', $break[1] ?? "");
+                $this->prefix = (!empty($prefix)) ? $prefix.'/' : "";
             }
             $next();
+            $this->prefix = "";
         }
     }
 }
