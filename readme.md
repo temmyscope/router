@@ -137,7 +137,7 @@ $route->all('/posts', function($request, $response){
 #### All params in uri are accessible through the request param object
 ```php
 $route->put('/post/:key', function($request, $response){
- return $response->send("This is a request containing key: ". $request->param->key )
+ return $response->send("This is a request containing key: ". $request->params->key )
 });
 ```
 
