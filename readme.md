@@ -106,7 +106,10 @@ require __DIR__.'/routes.php';
 	=> The "run" method processes routes and calls the appropriate action if the request succeeds.
 
 ```php
-$route->run();
+$route->run(
+ $_SERVER['REQUEST_METHOD'], 
+ $_SERVER['REQUEST_URI'] ?? $_SERVER['PATH_INFO'] ?? '/'
+);
 ```
 
 #### The route difinition in the route file that was required in the front controller e.g. index.php
@@ -269,7 +272,10 @@ $router->middleware('auth', function($request, $response, $next){
 
 require __DIR__.'/routes/web.php';
 
-$router->run();
+$router->run(
+ $_SERVER['REQUEST_METHOD'], 
+ $_SERVER['REQUEST_URI'] ?? $_SERVER['PATH_INFO'] ?? '/'
+);
 ```
 
 #### Example use Case of PSR-7 Request-Response Handlers In an Applicatiion making use of Symfony/http-foundation
