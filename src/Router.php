@@ -142,6 +142,13 @@ class Router implements RequestHandlerInterface
         }
     }
 
+    public function addRoute(array $methods, string $uri, $callable)
+    {
+        foreach ($methods as $method) {
+            $this->$method($uri, $callable);
+        }
+    }
+
     private function addParams($request, array $key_value)
     {
         $request = (is_object($request)) ? $request : new \stdClass();
@@ -159,7 +166,7 @@ class Router implements RequestHandlerInterface
     *
     * @return mixed
     */
-    protected function call(callable $callable, $params)
+    protected function call($callable, $params)
     {
         $builder = new DI\ContainerBuilder();
         $builder->enableCompilation(__DIR__ . '/../../../cache/tmp');
@@ -311,26 +318,16 @@ class Router implements RequestHandlerInterface
             if (@$relatedRoutes = $routesCollection['p'][$method]) {
                 $match = $this->findRouteMatch($uri, $relatedRoutes);
                 if (empty($match)) {
-                    header(
-                        sprintf('%s %s %s', $_SERVER['SERVER_PROTOCOL'] ?? "HTTP/1.1", 404, "Not Found"),
-                        true,
-                        404
-                    );
-                    http_response_code(404);
-                    echo"Resource not found.";
-                    return;
+                    $str = sprintf('%s %s %s', $_SERVER['SERVER_PROTOCOL'] ?? "HTTP/1.1", 404, "Not Found");
+                    echo $str;
+                    return $str;
                 }
                 $this->setRouteCallable($match['callable']);
                 $this->setRouteMiddlewares($match['middlewares']);
             } else {
-                header(
-                    sprintf('%s %s %s', $_SERVER['SERVER_PROTOCOL'] ?? "HTTP/1.1", 405, "Method Not Allowed"), 
-                    true,
-                    405
-                );
-                http_response_code(405);
-                echo"Http Method not allowed For requested resource.";
-                return;
+                $str = sprintf('%s %s %s', $_SERVER['SERVER_PROTOCOL'] ?? "HTTP/1.1", 405, "Method Not Allowed");
+                echo $str;
+                return $str;
             }
         }
         return $this($this->request, $this->response);

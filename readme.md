@@ -54,27 +54,9 @@ $route->registerProviders($request, $response);
 
 #### Register middlewares you want to use later in your route calls:: All Callables are acceptable
 
-```php
-#register middlewares 
-#E.g. for authentication, cors etc. using callables expecting the request, response, next
-$route->middleware('cors', function($request, $response, $next){
- $headers = [
-  'Access-Control-Allow-Origin'      => '*',
-  'Access-Control-Allow-Methods'     => '*',
-  'Access-Control-Allow-Credentials' => 'true',
-  'Access-Control-Max-Age'           => '86400',
-  'Access-Control-Allow-Headers'     => 'Content-Type, Authorization, X-Requested-With'
- ];
- if ($request->isMethod('OPTIONS')){
-  return $response->json('{"method":"OPTIONS"}', 200, $headers);
- }
- foreach($headers as $key => $value){
-  $response->header($key, $value);
- }
- #if required conditions are met do:
- $next($request, $response);
-});
-```
+***Note: registered middlewares only run/load after the associated route is matched/found. <br/>
+Running middlewares before matching the routes can only be done if you implement it in our application or by extending the router
+***
 
 #### The "next" is an object of the PSR-15 RequestHandlerInterface
 
@@ -124,6 +106,12 @@ $route->run(
 $route->get('/post/:id/creator/:name', function($request, $response){
 
 });
+```
+
+### Multiple Methods to same Route
+
+```php
+$route->addRoute(['OPTIONS', 'GET'], 'home', [HomeController::class, 'index']);
 ```
 
 #### To make all requests to a certain endpoint return the same callable, use the "all" method
@@ -351,4 +339,4 @@ $router->run(
 );
 ```
 
-***Note: Routes without parameters are accessed faster that those that accept parameters***
+***Note: Routes without parameters are resolved faster that those that accept parameters***
