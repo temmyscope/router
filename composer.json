@@ -2,7 +2,7 @@
     "name": "sevens/router",
     "description": "Simple Php High Speed Web Application Router library with PSR-7 Compliance",
     "type": "library",
-    "version": "v1.0.0",
+    "version": "v1.1.0",
     "license": "MIT",
     "minimum-stability": "stable",
     "config": {
@@ -19,7 +19,7 @@
         ]
     },
     "require": {
-        "php": ">=7.1.0",
+        "php": ">=7.4.0",
         "psr/http-message": "^1.0",
         "psr/http-server-handler": "^1.0",
         "php-di/php-di": "^6.0.11",
